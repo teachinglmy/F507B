@@ -2,9 +2,9 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>小學五年級數學：平行四邊形的面積</title>
-    <!-- 引入 PeerJS 實現跨裝置點對點實時連線 -->
+    <!-- 引入 PeerJS 實現跨裝置實時點對點連線 -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -42,7 +42,7 @@
         /* 待機頁 Overlay */
         #waiting-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(255, 255, 255, 0.96); display: none; flex-direction: column;
+            background: rgba(255, 255, 255, 0.98); display: none; flex-direction: column;
             justify-content: center; align-items: center; z-index: 900; font-size: 22px; font-weight: bold; color: #1e293b; padding: 20px; text-align: center;
         }
 
@@ -65,7 +65,7 @@
         .canvas-container {
             position: relative; width: 100%; max-width: 800px;
             background: white; border: 2.5px solid #334155; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            touch-action: none; /* 徹底鎖定手機網頁滾動，專注於 Canvas 操作 */
+            touch-action: none; /* 鎖定手機網頁滾動 */
         }
         canvas { display: block; width: 100% !important; height: auto !important; aspect-ratio: 2 / 1; border-radius: 10px; touch-action: none; }
         
@@ -108,7 +108,7 @@
         .q-nav-btn { padding: 5px 10px; border: 1px solid #cbd5e1; background: #f1f5f9; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
         .q-nav-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 
-        /* 📱 手機版 RWD 樣式修飾 */
+        /* 📱 手機版 RWD 樣式適應 */
         @media (max-width: 768px) {
             .teacher-dashboard { grid-template-columns: 1fr; height: auto; }
             .toolbar { flex-direction: row; justify-content: space-between; }
@@ -124,11 +124,11 @@
     <div id="login-modal">
         <div class="modal-card">
             <h2 style="margin-top:0; color:#0f172a; font-size: 22px;">五年級數學</h2>
-            <p style="color:#64748b; font-size:13px; margin-bottom:16px;">平行四邊形的面積</p>
+            <p style="color:#64748b; font-size:13px; margin-bottom:16px;">平行四邊形的面積）</p>
             
             <div class="role-selector">
                 <button id="btn-role-student" class="role-btn active" onclick="selectRole('student')">學生</button>
-                <button id="btn-role-teacher" class="role-btn" onclick="selectRole('teacher')">教師主控</button>
+                <button id="btn-role-teacher" class="role-btn" onclick="selectRole('teacher')">教師</button>
             </div>
             
             <div id="room-input-group" class="form-group">
@@ -196,7 +196,7 @@
                 <canvas id="student-canvas" width="800" height="400"></canvas>
             </div>
             <div class="feedback-box" id="feedback">
-                🌱 <strong>數學導師：</strong> 歡迎來到平行四邊形轉化為長方形的探究課堂！長方形需要直角，試著在「✂️ 分割模式」下選取兩點切一刀吧！
+                🌱 <strong>數學導師：</strong> 歡迎來到平行四邊形的面積的探究課堂！長方形需要直角，試著在「✂️ 分割模式」下選取兩點切一刀吧！
             </div>
         </div>
     </div>
@@ -205,7 +205,7 @@
     <div id="teacher-app" class="app-container">
         <header>
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <strong>教師實時儀表板</strong> (房號: <span class="room-tag" id="display-room-teacher">0505</span>)
+                <strong>教師實時儀表板</strong> (房號: <span class="room-tag" id="display-room-teacher">8888</span>)
                 <div style="display:flex; gap:4px;">
                     <button class="q-nav-btn active" onclick="switchQuestion(0)">第一題</button>
                     <button class="q-nav-btn" onclick="switchQuestion(1)">第二題</button>
@@ -246,7 +246,7 @@
         let peer = null;
         let peerConn = null;
         let studentConns = {}; 
-        let broadcastChan = new BroadcastChannel('math_classroom_channel_v9');
+        let broadcastChan = new BroadcastChannel('math_classroom_channel_v10');
         let studentsData = {}; 
 
         // 題目數據配置 (Canvas 基礎解析度 800x400)
@@ -294,6 +294,9 @@
                 document.getElementById('display-id').innerText = studentInfo.id;
                 document.getElementById('display-name').innerText = studentInfo.name;
                 document.getElementById('student-app').style.display = 'flex';
+                
+                // 修正：進入時強制顯示待機頁，防止跳題！
+                studentApproved = false;
                 document.getElementById('waiting-overlay').style.display = 'flex';
 
                 initStudentCanvas();
@@ -305,22 +308,37 @@
             }
         }
 
-        /* --- 連線模組 --- */
+        /* --- 重構連線模組：解決手機與教師端斷連及污染問題 --- */
         function initStudentPeer() {
             peer = new Peer();
+            
             peer.on('open', () => {
-                peerConn = peer.connect('math-teacher-v9-' + studentInfo.room);
-                peerConn.on('open', () => sendStudentState('JOIN'));
+                const teacherPeerId = 'math-teacher-v10-' + studentInfo.room;
+                peerConn = peer.connect(teacherPeerId, { reliable: true });
+                
+                peerConn.on('open', () => {
+                    sendStudentState('JOIN');
+                });
+                
                 peerConn.on('data', (data) => handleTeacherCommand(data));
             });
 
+            peer.on('error', (err) => {
+                console.warn('PeerJS 行動端重連中...', err);
+                // 同步備用通訊
+            });
+
             broadcastChan.onmessage = (e) => {
-                if (e.data.type === 'TEACHER_CMD') handleTeacherCommand(e.data.payload);
+                if (e.data.type === 'TEACHER_CMD' && e.data.room === studentInfo.room) {
+                    handleTeacherCommand(e.data.payload);
+                }
             };
         }
 
         function initTeacherPeer() {
-            peer = new Peer('math-teacher-v9-' + studentInfo.room);
+            const teacherPeerId = 'math-teacher-v10-' + studentInfo.room;
+            peer = new Peer(teacherPeerId);
+            
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => handleStudentMessage(data, conn));
                 conn.on('close', () => {
@@ -335,7 +353,9 @@
             });
 
             broadcastChan.onmessage = (e) => {
-                if (e.data.type === 'STUDENT_MSG') handleStudentMessage(e.data.payload, null);
+                if (e.data.type === 'STUDENT_MSG' && e.data.room === studentInfo.room) {
+                    handleStudentMessage(e.data.payload, null);
+                }
             };
         }
 
@@ -346,6 +366,7 @@
             
             const payload = {
                 type: msgType,
+                room: studentInfo.room,
                 id: studentInfo.id,
                 name: studentInfo.name,
                 approved: studentApproved,
@@ -358,7 +379,7 @@
             };
 
             if (peerConn && peerConn.open) peerConn.send(payload);
-            broadcastChan.postMessage({ type: 'STUDENT_MSG', payload: payload });
+            broadcastChan.postMessage({ type: 'STUDENT_MSG', room: studentInfo.room, payload: payload });
         }
 
         function handleTeacherCommand(cmd) {
@@ -372,13 +393,15 @@
                 isScreenLocked = cmd.locked;
                 document.getElementById('lock-overlay').style.display = isScreenLocked ? 'flex' : 'none';
             } else if (cmd.action === 'SWITCH_Q') {
-                loadQuestion(cmd.qIndex);
+                if (studentApproved) loadQuestion(cmd.qIndex);
             }
         }
 
         function handleStudentMessage(msg, conn) {
-            if (conn && msg.id) studentConns[msg.id] = conn;
+            if (!msg || !msg.id) return;
+            if (conn) studentConns[msg.id] = conn;
 
+            // 若學生重新連線且之前已批准，發送批准指令
             if (studentsData[msg.id] && studentsData[msg.id].approved) {
                 msg.approved = true;
                 if (conn && conn.open) {
@@ -405,14 +428,13 @@
             }
         }
 
-        /* --- 學生端繪圖與動態幾何分割算法 --- */
+        /* --- 學生端繪圖與幾何分割算法 --- */
         let canvas, ctx;
 
         function initStudentCanvas() {
             canvas = document.getElementById('student-canvas');
             ctx = canvas.getContext('2d');
 
-            // 統一監聽 Pointer Events（解決觸控與滑鼠雙重觸發 BUG）
             canvas.addEventListener('pointerdown', handlePointerDown);
             canvas.addEventListener('pointermove', handlePointerMove);
             canvas.addEventListener('pointerup', handlePointerUp);
@@ -537,7 +559,7 @@
             if (stroke) ctx.stroke();
         }
 
-        /* 💡 幾何座標精確轉換 (解決手機/iPad 畫面縮放偏移難題) */
+        /* 幾何座標精確轉換 (解決手機/iPad 畫面縮放偏移問題) */
         function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;   // 800 / CSS寬度
@@ -551,11 +573,10 @@
         let pointerStartPos = { x: 0, y: 0 };
         let dragStart = { x: 0, y: 0 };
 
-        /* 防誤觸關鍵：紀錄按下的點與時間 */
         function handlePointerDown(e) {
             if (isScreenLocked) return;
             const coords = getCanvasCoords(e);
-            pointerStartPos = coords; // 記錄起點，用於判斷是否為「滑動/誤觸」
+            pointerStartPos = coords;
 
             const state = getCurrentQState();
             if (currentMode === 'drag' && state.isCut) {
@@ -587,11 +608,10 @@
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
 
-            // 計算手指移動距離 (Touch Slop)
             const distMoved = Math.hypot(coords.x - pointerStartPos.x, coords.y - pointerStartPos.y);
 
             if (currentMode === 'cut') {
-                // 防誤觸機制：如果手指移動超過 10px，代表是滑動而非明確點擊，忽略本次觸控！
+                // 防誤觸：移動距離超過 10px 視為滑動，忽略切割動作
                 if (distMoved < 10) {
                     if (!state.isCut || q.allowMultiCut) {
                         const snapX = Math.round(coords.x / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
@@ -599,7 +619,7 @@
 
                         state.cutPoints.push({ x: snapX, y: snapY });
                         if (state.cutPoints.length === 2) {
-                            processCut(); // 執行切割演算法
+                            processCut();
                         }
                         drawStudentCanvas();
                     } else {
@@ -614,7 +634,7 @@
             sendStudentState();
         }
 
-        /* 根據學生按下的兩點，進行動態向量切割並進行數學解惑 */
+        /* 多邊形切割與數學概念引導 */
         function processCut() {
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
@@ -653,15 +673,15 @@
                 state.isCut = true;
                 state.cutPoints = [];
 
-                updatePieceColors(state.pieces); // 動態計算 N 色藍色
+                updatePieceColors(state.pieces);
 
                 const isVertical = Math.abs(p1.x - p2.x) < 2;
                 if (isVertical) {
                     updateFeedback(`🎉 **切得太棒了！精準切在「高」（垂直線）上！**<br>
-                        📘 **數學導師解惑：** 為什麼沿著「高」分割能成功？因為長方形需要直角！沿著「高」分割出的邊剛好形成直角！現在圖形已分成 ${state.pieces.length} 個不同深淺藍色的形狀，請切換至「✋ 拖拉模式」把它們搬去右邊長方形吧！`, "success");
+                        📘 **數學導師解惑：** 為什麼沿著「高」分割能成功？因為長方形需要直角！沿著「高」分割出的邊剛好形成直角。面積保持不變！現在圖形已分成 ${state.pieces.length} 個不同深淺藍色的形狀，請切換至「✋ 拖拉模式」把它們搬去右邊長方形吧！`, "success");
                 } else {
                     updateFeedback(`👏 **你勇敢踏出了第一步！成功照你的連線切成了 ${state.pieces.length} 個圖形！**<br>
-                        🤔 **數學導師解惑：** 現在分割出來的圖形沒有直角，搬到右邊長方形後無法平整對齊。怎樣分割才能切出長方形所需的直角呢？`, "warning");
+                        🤔 **數學導師解惑：** 但這樣分割出來的圖形沒有直角，搬到右邊長方形後無法平整對齊。大腦正在鍛鍊中，想想看，怎樣分割才能分割出長方形所需的直角呢？`, "warning");
                 }
             } else {
                 updateFeedback("🌱 **再試一次！** 這一刀沒有貫穿圖形喔！請在圖形邊界兩端選取兩個點連成直線吧！", "warning");
@@ -839,7 +859,7 @@
                     studentConns[id].send(payload);
                 }
             });
-            broadcastChan.postMessage({ type: 'TEACHER_CMD', payload: payload });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
             renderStudentList();
         }
 
@@ -854,7 +874,7 @@
                     studentConns[id].send(payload);
                 }
             });
-            broadcastChan.postMessage({ type: 'TEACHER_CMD', payload: payload });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
         }
 
         function switchQuestion(qIndex) {
@@ -869,7 +889,7 @@
                     studentConns[id].send(payload);
                 }
             });
-            broadcastChan.postMessage({ type: 'TEACHER_CMD', payload: payload });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
         }
 
         function projectStudentWork(id) {
