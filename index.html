@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小學五年級數學：平行四邊形轉化為長方形</title>
+    <title>小學五年級數學：平行四邊形的面積</title>
     <!-- 引入 PeerJS 實現跨裝置點對點實時連線 -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -17,22 +17,21 @@
         }
 
         * { box-sizing: border-box; touch-action: manipulation; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Arial, sans-serif; margin: 0; padding: 0; background-color: var(--bg-color); color: #0f172a; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Arial, sans-serif; margin: 0; padding: 0; background-color: var(--bg-color); color: #0f172a; overflow-x: hidden; }
 
         /* 登入視窗 */
         #login-modal {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 23, 42, 0.85); display: flex; justify-content: center; align-items: center; z-index: 1000;
+            background: rgba(15, 23, 42, 0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px;
         }
         .modal-card {
-            background: white; padding: 32px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
-            width: 400px; text-align: center;
+            background: white; padding: 28px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+            width: 100%; max-width: 400px; text-align: center;
         }
         .role-selector { display: flex; gap: 10px; margin-bottom: 20px; }
         .role-btn {
             flex: 1; padding: 12px; border: 2px solid var(--primary-color); background: white;
-            color: var(--primary-color); font-weight: bold; border-radius: 10px; cursor: pointer; font-size: 15px;
-            transition: all 0.2s ease;
+            color: var(--primary-color); font-weight: bold; border-radius: 10px; cursor: pointer; font-size: 15px; transition: all 0.2s ease;
         }
         .role-btn.active { background: var(--primary-color); color: white; }
         .form-group { margin-bottom: 15px; text-align: left; }
@@ -40,11 +39,11 @@
         .form-group input { width: 100%; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 16px; }
         .start-btn { width: 100%; padding: 14px; background: var(--success-color); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
 
-        /* 待機頁 Modal */
+        /* 待機頁 Overlay */
         #waiting-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(255, 255, 255, 0.96); display: none; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 900; font-size: 24px; font-weight: bold; color: #1e293b;
+            justify-content: center; align-items: center; z-index: 900; font-size: 22px; font-weight: bold; color: #1e293b; padding: 20px; text-align: center;
         }
 
         /* 鎖定螢幕 Overlay (眼睛望老師) */
@@ -52,57 +51,71 @@
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: #fef08a; display: none; flex-direction: column;
             justify-content: center; align-items: center; z-index: 950;
-            font-size: 48px; font-weight: 900; color: #854d0e; text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 40px; font-weight: 900; color: #854d0e; text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         /* 應用介面 */
         .app-container { display: none; height: 100vh; flex-direction: column; }
-        header { background: #ffffff; padding: 12px 24px; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        header { background: #ffffff; padding: 10px 16px; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
         
-        /* 學生端界面 */
-        .student-workspace { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 16px; overflow-y: auto; }
-        .toolbar { display: flex; gap: 12px; width: 100%; max-width: 840px; margin-bottom: 12px; align-items: center; background: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .canvas-container { position: relative; background: white; border: 2.5px solid #334155; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        canvas { display: block; border-radius: 10px; cursor: crosshair; }
+        /* 學生端界面與響應式 Canvas */
+        .student-workspace { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px; overflow-y: auto; }
+        .toolbar { display: flex; gap: 8px; width: 100%; max-width: 840px; margin-bottom: 10px; align-items: center; background: white; padding: 10px 14px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; }
         
-        /* 模式切換按鈕專用樣式 */
+        .canvas-container {
+            position: relative; width: 100%; max-width: 800px;
+            background: white; border: 2.5px solid #334155; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            touch-action: none; /* 徹底鎖定手機網頁滾動，專注於 Canvas 操作 */
+        }
+        canvas { display: block; width: 100% !important; height: auto !important; aspect-ratio: 2 / 1; border-radius: 10px; touch-action: none; }
+        
+        /* 模式切換按鈕區 */
         .mode-toggle-group { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #cbd5e1; }
-        .mode-btn { padding: 8px 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; background: transparent; color: #64748b; transition: all 0.2s; }
+        .mode-btn { padding: 6px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; background: transparent; color: #64748b; transition: all 0.2s; }
         .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 4px rgba(37,99,235,0.2); }
 
         .feedback-box {
-            width: 100%; max-width: 840px; margin-top: 14px; padding: 16px;
-            background: #fffbeb; border-left: 6px solid #f59e0b; border-radius: 10px; font-size: 15px; line-height: 1.6;
+            width: 100%; max-width: 840px; margin-top: 12px; padding: 14px;
+            background: #fffbeb; border-left: 6px solid #f59e0b; border-radius: 10px; font-size: 14px; line-height: 1.5;
         }
 
         /* 教師端界面 */
-        .teacher-dashboard { flex: 1; padding: 16px; display: grid; grid-template-columns: 360px 1fr; gap: 16px; height: calc(100vh - 70px); }
-        .student-list-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; }
+        .teacher-dashboard { flex: 1; padding: 12px; display: grid; grid-template-columns: 320px 1fr; gap: 12px; height: calc(100vh - 70px); }
+        .student-list-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; }
         .student-card {
-            padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;
+            padding: 10px; border: 1.5px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px;
             display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;
         }
         .student-card.selected { border-color: var(--primary-color); background: #eff6ff; }
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .status-badge { padding: 3px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; }
         .badge-waiting { background: #fef3c7; color: #b45309; }
         .badge-active { background: #dbeafe; color: #1e40af; }
         .badge-submitted { background: #d1fae5; color: #047857; }
         .badge-offline { background: #f3f4f6; color: #9ca3af; }
         .badge-hint { background: #fef08a; color: #854d0e; margin-left: 4px; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         
-        .projection-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .projected-view { border: 2px dashed #94a3b8; border-radius: 12px; width: 100%; max-width: 840px; height: 460px; display: flex; justify-content: center; align-items: center; position: relative; background: #f8fafc; }
+        .projection-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .projected-view { border: 2px dashed #94a3b8; border-radius: 12px; width: 100%; max-width: 800px; aspect-ratio: 2/1; display: flex; justify-content: center; align-items: center; position: relative; background: #f8fafc; }
 
-        .btn { padding: 8px 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; transition: opacity 0.2s; }
+        .btn { padding: 6px 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.9; }
         .btn-primary { background: var(--primary-color); color: white; }
         .btn-success { background: var(--success-color); color: white; }
         .btn-warning { background: var(--warning-color); color: white; }
         .btn-danger { background: #ef4444; color: white; }
         
-        .room-tag { background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-family: monospace; }
-        .q-nav-btn { padding: 6px 14px; border: 1px solid #cbd5e1; background: #f1f5f9; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .room-tag { background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 6px; font-weight: bold; font-family: monospace; }
+        .q-nav-btn { padding: 5px 10px; border: 1px solid #cbd5e1; background: #f1f5f9; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
         .q-nav-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+        /* 📱 手機版 RWD 樣式修飾 */
+        @media (max-width: 768px) {
+            .teacher-dashboard { grid-template-columns: 1fr; height: auto; }
+            .toolbar { flex-direction: row; justify-content: space-between; }
+            #step-hint { width: 100%; margin-top: 4px; font-size: 12px; }
+            .feedback-box { font-size: 13px; padding: 10px; }
+            header { font-size: 13px; }
+        }
     </style>
 </head>
 <body>
@@ -110,17 +123,17 @@
     <!-- 登入與身份選擇視窗 -->
     <div id="login-modal">
         <div class="modal-card">
-            <h2 style="margin-top:0; color:#0f172a;">五年級數學課件</h2>
-            <p style="color:#64748b; font-size:14px; margin-bottom:20px;">平行四邊形面積：圖形分割與拼砌</p>
+            <h2 style="margin-top:0; color:#0f172a; font-size: 22px;">五年級數學</h2>
+            <p style="color:#64748b; font-size:13px; margin-bottom:16px;">平行四邊形的面積</p>
             
             <div class="role-selector">
-                <button id="btn-role-student" class="role-btn active" onclick="selectRole('student')">學生 iPad 端</button>
-                <button id="btn-role-teacher" class="role-btn" onclick="selectRole('teacher')">教師主控端</button>
+                <button id="btn-role-student" class="role-btn active" onclick="selectRole('student')">學生</button>
+                <button id="btn-role-teacher" class="role-btn" onclick="selectRole('teacher')">教師主控</button>
             </div>
             
             <div id="room-input-group" class="form-group">
                 <label>課堂房號 (4位數字)</label>
-                <input type="text" id="input-room" value="8888" maxlength="6">
+                <input type="text" id="input-room" value="0505" maxlength="6">
             </div>
 
             <div id="student-form">
@@ -140,14 +153,14 @@
 
     <!-- 學生待機 Overlay -->
     <div id="waiting-overlay">
-        <div style="font-size:60px; margin-bottom:20px;">⌛</div>
+        <div style="font-size:50px; margin-bottom:12px;">⌛</div>
         <div>已成功進入課堂待機室</div>
-        <div style="font-size:16px; color:#64748b; margin-top:10px;">請等待老師批准開啟堂課...</div>
+        <div style="font-size:14px; color:#64748b; margin-top:8px;">請等待老師批准開啟堂課...</div>
     </div>
 
     <!-- 學生螢幕鎖定 Overlay -->
     <div id="lock-overlay">
-        <div style="font-size:80px; margin-bottom:10px;">👀</div>
+        <div style="font-size:70px; margin-bottom:10px;">👀</div>
         <div>眼睛望老師</div>
     </div>
 
@@ -166,25 +179,24 @@
         </header>
         <div class="student-workspace">
             <div class="toolbar">
-                <!-- 模式切換按鈕區 (分割模式 vs 拖拉模式) -->
                 <div class="mode-toggle-group">
                     <button id="btn-mode-cut" class="mode-btn active" onclick="setInteractionMode('cut')">✂️ 分割模式</button>
                     <button id="btn-mode-drag" class="mode-btn" onclick="setInteractionMode('drag')">✋ 拖拉模式</button>
                 </div>
 
-                <label style="cursor:pointer; font-weight:600; margin-left:8px;">
-                    <input type="checkbox" id="grid-toggle" checked onchange="drawStudentCanvas()"> 顯示格線
+                <label style="cursor:pointer; font-weight:600; font-size:13px; margin-left:auto;">
+                    <input type="checkbox" id="grid-toggle" checked onchange="drawStudentCanvas()"> 格線
                 </label>
                 <button class="btn btn-warning" onclick="resetWork()">重新開始</button>
-                <span id="step-hint" style="color:#334155; font-weight:bold; margin-left:auto;">
+                <div id="step-hint" style="color:#334155; font-weight:bold; width: 100%; margin-top:4px; font-size:13px;">
                     ✂️ 當前為「分割模式」：請按兩點切一刀。
-                </span>
+                </div>
             </div>
             <div class="canvas-container">
                 <canvas id="student-canvas" width="800" height="400"></canvas>
             </div>
             <div class="feedback-box" id="feedback">
-                🌱 <strong>成長型思維導師：</strong> 歡迎來到平行四邊形面積探索課堂！請在「✂️ 分割模式」下選取兩點切一刀，想想看怎樣切才能拼出長方形呢？
+                🌱 <strong>數學導師：</strong> 歡迎來到平行四邊形轉化為長方形的探究課堂！長方形需要直角，試著在「✂️ 分割模式」下選取兩點切一刀吧！
             </div>
         </div>
     </div>
@@ -192,28 +204,28 @@
     <!-- 教師控管區 -->
     <div id="teacher-app" class="app-container">
         <header>
-            <div style="display:flex; align-items:center; gap:15px;">
-                <strong>教師實時儀表板</strong> (房號: <span class="room-tag" id="display-room-teacher">8888</span>)
-                <div style="display:flex; gap:6px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <strong>教師實時儀表板</strong> (房號: <span class="room-tag" id="display-room-teacher">0505</span>)
+                <div style="display:flex; gap:4px;">
                     <button class="q-nav-btn active" onclick="switchQuestion(0)">第一題</button>
                     <button class="q-nav-btn" onclick="switchQuestion(1)">第二題</button>
                     <button class="q-nav-btn" onclick="switchQuestion(2)">第三題</button>
                 </div>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center;">
                 <button id="lock-btn" class="btn btn-danger" onclick="toggleScreenLock()">🔒 鎖定學生螢幕</button>
-                <button class="btn btn-success" onclick="approveAllStudents()">允許所有人進入課堂</button>
+                <button class="btn btn-success" onclick="approveAllStudents()">允許所有人進入</button>
             </div>
         </header>
         <div class="teacher-dashboard">
             <div class="student-list-panel">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 style="margin:0; font-size:16px;">學生列表 (<span id="student-count-text">總數 0 人</span>)</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 style="margin:0; font-size:15px;">學生列表 (<span id="student-count-text">總數 0 人</span>)</h3>
                 </div>
                 <div id="student-list"></div>
             </div>
             <div class="projection-panel">
-                <h3 id="projected-title" style="margin-top:0; color:#0f172a;">請點擊左側學生以投影 iPad 畫面</h3>
+                <h3 id="projected-title" style="margin-top:0; color:#0f172a; font-size:16px;">請點擊左側學生以投影畫面</h3>
                 <div class="projected-view">
                     <canvas id="teacher-canvas" width="800" height="400" style="width:100%; height:auto;"></canvas>
                 </div>
@@ -229,17 +241,15 @@
         let currentQIndex = 0;
         let isScreenLocked = false;
         let studentApproved = false;
-
-        // 當前互動模式：'cut' (分割模式) 或 'drag' (拖拉模式)，預設為 'cut'
-        let currentMode = 'cut';
+        let currentMode = 'cut'; // 'cut' 或 'drag'
 
         let peer = null;
         let peerConn = null;
         let studentConns = {}; 
-        let broadcastChan = new BroadcastChannel('math_classroom_channel_v8');
+        let broadcastChan = new BroadcastChannel('math_classroom_channel_v9');
         let studentsData = {}; 
 
-        // 題目數據配置
+        // 題目數據配置 (Canvas 基礎解析度 800x400)
         const QUESTIONS = [
             {
                 title: "第一題",
@@ -252,7 +262,6 @@
                 title: "第二題",
                 hint: "嘗試把平行四邊形分割成兩個三角形，加油！",
                 allowMultiCut: false,
-                // 底邊完全緊貼格線 (y=80 至 y=280)
                 poly: [{x:160, y:80}, {x:280, y:80}, {x:160, y:280}, {x:40, y:280}],
                 targetRect: { x: 480, y: 80, width: 120, height: 200 }
             },
@@ -265,7 +274,6 @@
             }
         ];
 
-        // 學生每題獨立狀態儲存
         let studentQStates = [null, null, null];
 
         function selectRole(role) {
@@ -297,11 +305,11 @@
             }
         }
 
-        /* --- 點對點連線系統 --- */
+        /* --- 連線模組 --- */
         function initStudentPeer() {
             peer = new Peer();
             peer.on('open', () => {
-                peerConn = peer.connect('math-teacher-v8-' + studentInfo.room);
+                peerConn = peer.connect('math-teacher-v9-' + studentInfo.room);
                 peerConn.on('open', () => sendStudentState('JOIN'));
                 peerConn.on('data', (data) => handleTeacherCommand(data));
             });
@@ -312,7 +320,7 @@
         }
 
         function initTeacherPeer() {
-            peer = new Peer('math-teacher-v8-' + studentInfo.room);
+            peer = new Peer('math-teacher-v9-' + studentInfo.room);
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => handleStudentMessage(data, conn));
                 conn.on('close', () => {
@@ -383,7 +391,7 @@
             if (selectedStudentId === msg.id) updateProjectedCanvas(msg.image);
         }
 
-        /* --- 模式切換邏輯 (分割模式 vs 拖拉模式) --- */
+        /* --- 模式切換邏輯 --- */
         function setInteractionMode(mode) {
             currentMode = mode;
             document.getElementById('btn-mode-cut').classList.toggle('active', mode === 'cut');
@@ -404,13 +412,10 @@
             canvas = document.getElementById('student-canvas');
             ctx = canvas.getContext('2d');
 
-            canvas.addEventListener('mousedown', handlePointerDown);
-            canvas.addEventListener('mousemove', handlePointerMove);
-            canvas.addEventListener('mouseup', handlePointerUp);
-
-            canvas.addEventListener('touchstart', e => handlePointerDown(e.touches[0]));
-            canvas.addEventListener('touchmove', e => { e.preventDefault(); handlePointerMove(e.touches[0]); });
-            canvas.addEventListener('touchend', handlePointerUp);
+            // 統一監聽 Pointer Events（解決觸控與滑鼠雙重觸發 BUG）
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            canvas.addEventListener('pointermove', handlePointerMove);
+            canvas.addEventListener('pointerup', handlePointerUp);
 
             loadQuestion(0);
         }
@@ -432,18 +437,15 @@
         function loadQuestion(qIndex) {
             currentQIndex = qIndex;
             document.getElementById('display-q-title').innerText = QUESTIONS[qIndex].title;
-            // 每次載入新題目，預設切換至「✂️ 分割模式」
             setInteractionMode('cut');
             drawStudentCanvas();
             sendStudentState();
         }
 
-        /* 💡 動態 N 色藍色光譜賦色演算法：將 N 個圖形平分賦予獨一無二的藍色漸變 */
+        /* 動態 N 色藍色漸變演算法 */
         function updatePieceColors(pieces) {
             const count = pieces.length;
             if (count === 0) return;
-            
-            // 從深藍 (Lightness=25%) 到淺藍 (Lightness=75%) 動態均勻分配
             pieces.forEach((p, idx) => {
                 const lightness = count === 1 ? 45 : Math.round(25 + (idx * (50 / (count - 1))));
                 p.color = `hsl(217, 85%, ${lightness}%)`;
@@ -454,7 +456,6 @@
             const state = getCurrentQState();
             state.isCut = true;
             
-            // 根據 image_429194.png，垂直高分割出 2 個圖形
             const rightTri = [{x:200, y:120}, {x:320, y:240}, {x:200, y:240}];
             const leftPoly = [{x:40, y:80}, {x:160, y:80}, {x:200, y:120}, {x:200, y:240}];
 
@@ -462,9 +463,9 @@
                 { poly: leftPoly, pos: {x:0, y:0} },
                 { poly: rightTri, pos: {x:0, y:0} }
             ];
-            updatePieceColors(state.pieces); // 賦予動態藍色
+            updatePieceColors(state.pieces);
 
-            updateFeedback("💡 **錦囊已發動！** 已為你先分割出一個三角形。請切換至「✋ 拖拉模式」試試搬移，或在「✂️ 分割模式」下繼續按兩點分割其餘部分！加油！", "info");
+            updateFeedback("💡 **錦囊已發動！** 已為你先分割出一個三角形（深藍色）。你可以切換至「✋ 拖拉模式」嘗試搬移，或在「✂️ 分割模式」下繼續按兩點分割其餘部分！加油！", "info");
         }
 
         function drawStudentCanvas() {
@@ -474,7 +475,7 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. 深色格線 (#334155)
+            // 1. 深色工作區格線 (#334155)
             if (showGrid) {
                 ctx.strokeStyle = '#334155';
                 ctx.lineWidth = 1.5;
@@ -502,13 +503,11 @@
                 ctx.lineWidth = 2.5;
                 drawPolygon(q.poly, true, true);
 
-                // 繪製選取中的切點
                 state.cutPoints.forEach(pt => {
                     ctx.fillStyle = '#ef4444';
                     ctx.beginPath(); ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2); ctx.fill();
                 });
             } else {
-                // 繪製分割後的 N 個圖形 (動態藍色着色 + 2.5px 黑色邊框)
                 state.pieces.forEach(p => {
                     ctx.save();
                     ctx.translate(p.pos.x, p.pos.y);
@@ -519,7 +518,6 @@
                     ctx.restore();
                 });
 
-                // 繪製分割模式下的選點
                 if (currentMode === 'cut') {
                     state.cutPoints.forEach(pt => {
                         ctx.fillStyle = '#ef4444';
@@ -539,48 +537,36 @@
             if (stroke) ctx.stroke();
         }
 
+        /* 💡 幾何座標精確轉換 (解決手機/iPad 畫面縮放偏移難題) */
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;   // 800 / CSS寬度
+            const scaleY = canvas.height / rect.height; // 400 / CSS高度
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        let pointerStartPos = { x: 0, y: 0 };
         let dragStart = { x: 0, y: 0 };
 
-        /* 💡 核心事件處置：嚴格遵循「分割模式」與「拖拉模式」分離原則 */
+        /* 防誤觸關鍵：紀錄按下的點與時間 */
         function handlePointerDown(e) {
             if (isScreenLocked) return;
-            const rect = canvas.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+            const coords = getCanvasCoords(e);
+            pointerStartPos = coords; // 記錄起點，用於判斷是否為「滑動/誤觸」
+
             const state = getCurrentQState();
-            const q = QUESTIONS[currentQIndex];
-
-            if (currentMode === 'cut') {
-                // 【分割模式 ✂️】：只能選點進行切割，嚴格禁止拖拉！
-                if (!state.isCut || q.allowMultiCut) {
-                    const snapX = Math.round(clickX / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
-                    const snapY = Math.round(clickY / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
-
-                    state.cutPoints.push({ x: snapX, y: snapY });
-                    if (state.cutPoints.length === 2) {
-                        processCut(); // 執行精確多邊形切割
+            if (currentMode === 'drag' && state.isCut) {
+                for (let i = state.pieces.length - 1; i >= 0; i--) {
+                    const p = state.pieces[i];
+                    const localPt = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
+                    if (isPointInPoly(localPt, p.poly)) {
+                        state.activePieceIndex = i;
+                        dragStart = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
+                        break;
                     }
-                    drawStudentCanvas();
-                } else {
-                    updateFeedback("⚠️ **提示：** 本題只能切一刀喔！如果想重新切，請按下「重新開始」；如果想移動圖形，請點擊上方按鈕切換至「✋ 拖拉模式」。", "warning");
-                }
-            } else if (currentMode === 'drag') {
-                // 【拖拉模式 ✋】：只能拖拉圖形，嚴格禁止切割選點！
-                if (state.isCut) {
-                    for (let i = state.pieces.length - 1; i >= 0; i--) {
-                        const p = state.pieces[i];
-                        const localPt = { x: clickX - p.pos.x, y: clickY - p.pos.y };
-                        if (isPointInPoly(localPt, p.poly)) {
-                            state.activePieceIndex = i;
-                            dragStart = {
-                                x: clickX - p.pos.x,
-                                y: clickY - p.pos.y
-                            };
-                            break;
-                        }
-                    }
-                } else {
-                    updateFeedback("💡 **小提示：** 目前圖形尚未分割喔！請先點擊上方按鈕切換至「✂️ 分割模式」切開圖形後再來搬移！", "warning");
                 }
             }
         }
@@ -588,25 +574,47 @@
         function handlePointerMove(e) {
             const state = getCurrentQState();
             if (currentMode === 'drag' && state.activePieceIndex !== -1 && state.isCut) {
-                const rect = canvas.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-
-                state.pieces[state.activePieceIndex].pos.x = clickX - dragStart.x;
-                state.pieces[state.activePieceIndex].pos.y = clickY - dragStart.y;
+                const coords = getCanvasCoords(e);
+                state.pieces[state.activePieceIndex].pos.x = coords.x - dragStart.x;
+                state.pieces[state.activePieceIndex].pos.y = coords.y - dragStart.y;
                 drawStudentCanvas();
             }
         }
 
-        function handlePointerUp() {
+        function handlePointerUp(e) {
+            if (isScreenLocked) return;
+            const coords = getCanvasCoords(e);
             const state = getCurrentQState();
-            if (state.activePieceIndex !== -1) {
-                state.activePieceIndex = -1;
+            const q = QUESTIONS[currentQIndex];
+
+            // 計算手指移動距離 (Touch Slop)
+            const distMoved = Math.hypot(coords.x - pointerStartPos.x, coords.y - pointerStartPos.y);
+
+            if (currentMode === 'cut') {
+                // 防誤觸機制：如果手指移動超過 10px，代表是滑動而非明確點擊，忽略本次觸控！
+                if (distMoved < 10) {
+                    if (!state.isCut || q.allowMultiCut) {
+                        const snapX = Math.round(coords.x / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
+                        const snapY = Math.round(coords.y / (GRID_SIZE / 2)) * (GRID_SIZE / 2);
+
+                        state.cutPoints.push({ x: snapX, y: snapY });
+                        if (state.cutPoints.length === 2) {
+                            processCut(); // 執行切割演算法
+                        }
+                        drawStudentCanvas();
+                    } else {
+                        updateFeedback("⚠️ **小提醒：** 本題只需切一刀喔！如想重新切，請按「重新開始」；如想搬移圖形，請點擊上方按鈕切換至「✋ 拖拉模式」。", "warning");
+                    }
+                }
+            } else if (currentMode === 'drag') {
+                if (state.activePieceIndex !== -1) {
+                    state.activePieceIndex = -1;
+                }
             }
             sendStudentState();
         }
 
-        /* 根據學生按下的兩點，對多邊形進行動態向量切割並進行數學解惑 */
+        /* 根據學生按下的兩點，進行動態向量切割並進行數學解惑 */
         function processCut() {
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
@@ -645,16 +653,15 @@
                 state.isCut = true;
                 state.cutPoints = [];
 
-                // 自動調用 N 色藍色漸變演算法
-                updatePieceColors(state.pieces);
+                updatePieceColors(state.pieces); // 動態計算 N 色藍色
 
                 const isVertical = Math.abs(p1.x - p2.x) < 2;
                 if (isVertical) {
                     updateFeedback(`🎉 **切得太棒了！精準切在「高」（垂直線）上！**<br>
-                        📘 **數學解惑：** 為什麼沿著高切能成功？因為長方形需要 90° 直角！沿著「高」切出的邊剛好形成直角！現在圖形已分成 ${state.pieces.length} 個不同深淺藍色的形狀，請切換至「✋ 拖拉模式」把它們搬去右邊長方形吧！`, "success");
+                        📘 **數學導師解惑：** 為什麼沿著「高」分割能成功？因為長方形需要直角！沿著「高」分割出的邊剛好形成直角！現在圖形已分成 ${state.pieces.length} 個不同深淺藍色的形狀，請切換至「✋ 拖拉模式」把它們搬去右邊長方形吧！`, "success");
                 } else {
                     updateFeedback(`👏 **你勇敢踏出了第一步！成功照你的連線切成了 ${state.pieces.length} 個圖形！**<br>
-                        🤔 **數學導師解惑：** 但這是一條斜線喔！斜線切出來的角度不是 90° 直角，搬到右邊長方形後無法平整對齊。大腦正在鍛鍊中，想想看，怎樣切才能切出長方形所需的直角呢？`, "warning");
+                        🤔 **數學導師解惑：** 現在分割出來的圖形沒有直角，搬到右邊長方形後無法平整對齊。怎樣分割才能切出長方形所需的直角呢？`, "warning");
                 }
             } else {
                 updateFeedback("🌱 **再試一次！** 這一刀沒有貫穿圖形喔！請在圖形邊界兩端選取兩個點連成直線吧！", "warning");
@@ -748,11 +755,11 @@
                 cutPoints: [],
                 pieces: [],
                 activePieceIndex: -1,
-                usedHint: wasHintUsed, // 重置後錦囊紀錄持續保持！
+                usedHint: wasHintUsed,
                 isSubmitted: false
             };
 
-            setInteractionMode('cut'); // 重置時預設回到分割模式
+            setInteractionMode('cut');
             drawStudentCanvas();
             updateFeedback("🌱 沒關係！每一次嘗試都是大腦成長的營養，讓我們再試一次！", "info");
             sendStudentState();
@@ -869,7 +876,7 @@
             selectedStudentId = id;
             renderStudentList();
             const student = studentsData[id];
-            document.getElementById('projected-title').innerText = `正在投影：[${student.id}] ${student.name} 的 iPad 畫面`;
+            document.getElementById('projected-title').innerText = `正在投影：[${student.id}] ${student.name} 的畫面`;
             updateProjectedCanvas(student.image);
         }
 
