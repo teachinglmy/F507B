@@ -887,4 +887,328 @@
                         }
 
                         let nearestDot = null;
-                        let
+                        let minDist = 30; // 30px 磁吸
+                        activeDots.forEach(dot => {
+                            const d = Math.hypot(coords.x - dot.x, coords.y - dot.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestDot = dot;
+                            }
+                        });
+
+                        if (nearestDot) {
+                            state.cutPoints.push({ x: nearestDot.x, y: nearestDot.y });
+                            if (state.cutPoints.length === 2) {
+                                processCut();
+                            }
+                            drawStudentCanvas();
+                        } else {
+                            updateFeedback("💡 **小提示：** 請點選圖形邊界上的「亮紫色圓點」進行點對點切割喔！", "info");
+                        }
+                    } else {
+                        updateFeedback("⚠️ 本題只需切一刀喔！如想重新切請按「重新開始」；如想搬移圖形請切換至「✋ 拖拉模式」。", "warning");
+                    }
+                }
+            } else if (currentMode === 'drag') {
+                if (state.activePieceIndex !== -1) {
+                    state.activePieceIndex = -1;
+                }
+            }
+            sendStudentState();
+        }
+
+        /* 切割與數學解惑引導 */
+        function processCut() {
+            const state = getCurrentQState();
+            const q = QUESTIONS[currentQIndex];
+            const p1 = state.cutPoints[0];
+            const p2 = state.cutPoints[1];
+
+            let slicedAny = false;
+            let newPieces = [];
+
+            if (!state.isCut) {
+                const res = slicePolygonWithLine(q.poly, p1, p2);
+                if (res) {
+                    newPieces = [
+                        { poly: res[0], pos: { x: 0, y: 0 } },
+                        { poly: res[1], pos: { x: 0, y: 0 } }
+                    ];
+                    slicedAny = true;
+                }
+            } else if (q.allowMultiCut) {
+                for (let pObj of state.pieces) {
+                    const relP1 = { x: p1.x - pObj.pos.x, y: p1.y - pObj.pos.y };
+                    const relP2 = { x: p2.x - pObj.pos.x, y: p2.y - pObj.pos.y };
+                    const res = slicePolygonWithLine(pObj.poly, relP1, relP2);
+                    if (res) {
+                        newPieces.push({ poly: res[0], pos: { ...pObj.pos } });
+                        newPieces.push({ poly: res[1], pos: { ...pObj.pos } });
+                        slicedAny = true;
+                    } else {
+                        newPieces.push(pObj);
+                    }
+                }
+            }
+
+            if (slicedAny) {
+                state.pieces = newPieces;
+                state.isCut = true;
+                state.cutPoints = [];
+
+                updatePieceColors(state.pieces);
+
+                const isVertical = Math.abs(p1.x - p2.x) < 2;
+                if (isVertical) {
+                    updateFeedback(`🎉 **切得太棒了！精準點對點切在「高」（垂直線）上！**<br>
+                        📘 **數學導師解惑：** 觀察左邊留下的黑色單線輪廓！雖然圖形被切開並搬移了，但總面積完全沒有改變（等積變形）！請切換至「✋ 拖拉模式」把它們搬去右邊長方形拼滿吧！`, "success");
+                } else {
+                    updateFeedback(`👏 **點對點切割成功！切出了 ${state.pieces.length} 個圖形！**<br>
+                        🤔 **數學導師解惑：** 但這是一條斜線喔！斜線切出來的角度不是 $90^\circ$ 直角，搬到右邊長方形後無法平整對齊。試試尋找能切出直角的位置（垂直的高）吧！`, "warning");
+                }
+            } else {
+                updateFeedback("🌱 **再試一次！** 請選擇兩個紫點，連成一條貫穿圖形的直線吧！", "warning");
+                state.cutPoints = [];
+            }
+        }
+
+        /* 多邊形切割演算 */
+        function slicePolygonWithLine(poly, p1, p2) {
+            const A = p2.y - p1.y;
+            const B = p1.x - p2.x;
+            const C = p2.x * p1.y - p1.x * p2.y;
+
+            function side(p) {
+                const val = A * p.x + B * p.y + C;
+                if (Math.abs(val) < 1e-4) return 0;
+                return val > 0 ? 1 : -1;
+            }
+
+            function intersect(pA, pB) {
+                const dA = A * pA.x + B * pA.y + C;
+                const dB = A * pB.x + B * pB.y + C;
+                const t = dA / (dA - dB);
+                return {
+                    x: Math.round((pA.x + t * (pB.x - pA.x)) * 10) / 10,
+                    y: Math.round((pA.y + t * (pB.y - pA.y)) * 10) / 10
+                };
+            }
+
+            const leftPoly = [];
+            const rightPoly = [];
+
+            for (let i = 0; i < poly.length; i++) {
+                const curr = poly[i];
+                const next = poly[(i + 1) % poly.length];
+
+                const sCurr = side(curr);
+                const sNext = side(next);
+
+                if (sCurr >= 0) leftPoly.push(curr);
+                if (sCurr <= 0) rightPoly.push(curr);
+
+                if (sCurr * sNext < 0) {
+                    const inter = intersect(curr, next);
+                    leftPoly.push(inter);
+                    rightPoly.push(inter);
+                }
+            }
+
+            function cleanPoly(pList) {
+                const res = [];
+                for (let i = 0; i < pList.length; i++) {
+                    const c = pList[i];
+                    const prev = res[res.length - 1];
+                    if (!prev || Math.abs(c.x - prev.x) > 0.1 || Math.abs(c.y - prev.y) > 0.1) {
+                        res.push(c);
+                    }
+                }
+                if (res.length > 2 && Math.abs(res[0].x - res[res.length - 1].x) < 0.1 && Math.abs(res[0].y - res[res.length - 1].y) < 0.1) {
+                    res.pop();
+                }
+                return res;
+            }
+
+            const cleanLeft = cleanPoly(leftPoly);
+            const cleanRight = cleanPoly(rightPoly);
+
+            if (cleanLeft.length >= 3 && cleanRight.length >= 3) {
+                return [cleanLeft, cleanRight];
+            }
+            return null;
+        }
+
+        function isPointInPoly(pt, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i].x, yi = poly[i].y;
+                const xj = poly[j].x, yj = poly[j].y;
+                const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function resetWork() {
+            const state = getCurrentQState();
+            const wasHint1 = state ? state.usedHint1 : false;
+            const wasHint2 = state ? state.usedHint2 : false;
+
+            studentQStates[currentQIndex] = {
+                isCut: false,
+                cutPoints: [],
+                pieces: [],
+                activePieceIndex: -1,
+                usedHint1: wasHint1,
+                usedHint2: wasHint2,
+                isSubmitted: false
+            };
+
+            setInteractionMode('cut');
+            drawStudentCanvas();
+            updateFeedback("🌱 沒關係！每一次嘗試都是大腦成長的營養，讓我們再試一次！", "info");
+            sendStudentState();
+        }
+
+        function submitWork() {
+            const state = getCurrentQState();
+            state.isSubmitted = true;
+            updateFeedback("✅ **作品已成功提交給老師！** 你展現了非常棒的探索精神與堅毅態度！", "success");
+            sendStudentState();
+        }
+
+        function updateFeedback(msg, type) {
+            const box = document.getElementById('feedback');
+            box.innerHTML = msg;
+            if (type === 'success') box.style.borderColor = '#10b981';
+            else box.style.borderColor = '#f59e0b';
+        }
+
+        /* --- 教師控制端邏輯 --- */
+        let selectedStudentId = null;
+
+        function renderStudentList() {
+            const listContainer = document.getElementById('student-list');
+            listContainer.innerHTML = '';
+
+            const sortedIds = Object.keys(studentsData).sort((a, b) => parseInt(a) - parseInt(b));
+            document.getElementById('student-count-text').innerText = `總數 ${sortedIds.length} 組`;
+
+            sortedIds.forEach(id => {
+                const student = studentsData[id];
+                const card = document.createElement('div');
+                card.className = `student-card ${selectedStudentId === id ? 'selected' : ''}`;
+                card.onclick = () => projectStudentWork(id);
+
+                let statusTag = '';
+                if (!student.online) {
+                    statusTag = '<span class="status-badge badge-offline">已離線</span>';
+                } else if (!student.approved) {
+                    statusTag = '<span class="status-badge badge-waiting">待批准</span>';
+                } else if (student.submitted) {
+                    statusTag = '<span class="status-badge badge-submitted">已提交</span>';
+                } else {
+                    statusTag = '<span class="status-badge badge-active">探索中</span>';
+                }
+
+                let hintTag = '';
+                if (student.usedHint1 && student.usedHint2) {
+                    hintTag = '<span class="badge-hint">💡 錦囊1+2</span>';
+                } else if (student.usedHint1) {
+                    hintTag = '<span class="badge-hint">💡 錦囊1</span>';
+                }
+
+                const unlockedTag = student.challengeUnlocked ? '<span class="badge-unlocked">🏆 已解鎖第三題</span>' : '';
+
+                const unlockBtnHtml = !student.challengeUnlocked 
+                    ? `<button class="btn-unlock" onclick="event.stopPropagation(); unlockChallengeForStudent('${student.id}')">🔓 發放挑戰題</button>` 
+                    : '';
+
+                card.innerHTML = `
+                    <div class="student-card-header">
+                        <div><strong>[第 ${student.id} 組]</strong> ${student.name}</div>
+                        <div>${statusTag}</div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>${hintTag} ${unlockedTag}</div>
+                        <div>${unlockBtnHtml}</div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        function unlockChallengeForStudent(studentId) {
+            if (studentsData[studentId]) {
+                studentsData[studentId].challengeUnlocked = true;
+            }
+            const payload = { action: 'UNLOCK_CHALLENGE', targetId: studentId, autoSwitch: false };
+            Object.keys(studentConns).forEach(id => {
+                if (id === studentId && studentConns[id] && studentConns[id].open) {
+                    studentConns[id].send(payload);
+                }
+            });
+            renderStudentList();
+        }
+
+        function approveAllStudents() {
+            Object.keys(studentsData).forEach(id => {
+                studentsData[id].approved = true;
+            });
+            const payload = { action: 'APPROVE', targetQIndex: currentQIndex };
+            Object.keys(studentConns).forEach(id => {
+                if (studentConns[id] && studentConns[id].open) {
+                    studentConns[id].send(payload);
+                }
+            });
+            renderStudentList();
+        }
+
+        function toggleScreenLock() {
+            isScreenLocked = !isScreenLocked;
+            const btn = document.getElementById('lock-btn');
+            btn.innerText = isScreenLocked ? "🔓 解除學生螢幕" : "🔒 鎖定學生螢幕";
+            
+            const payload = { action: 'LOCK', locked: isScreenLocked };
+            Object.keys(studentConns).forEach(id => {
+                if (studentConns[id] && studentConns[id].open) {
+                    studentConns[id].send(payload);
+                }
+            });
+        }
+
+        function switchQuestion(qIndex) {
+            currentQIndex = qIndex;
+            document.querySelectorAll('.q-nav-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === qIndex);
+            });
+
+            const payload = { action: 'SWITCH_Q', qIndex: qIndex };
+            Object.keys(studentConns).forEach(id => {
+                if (studentConns[id] && studentConns[id].open) {
+                    studentConns[id].send(payload);
+                }
+            });
+        }
+
+        function projectStudentWork(id) {
+            selectedStudentId = id;
+            renderStudentList();
+            const student = studentsData[id];
+            document.getElementById('projected-title').innerText = `正在投影：[第 ${student.id} 組] ${student.name} 的畫面`;
+            updateProjectedCanvas(student.image);
+        }
+
+        function updateProjectedCanvas(dataUrl) {
+            const tCanvas = document.getElementById('teacher-canvas');
+            const tCtx = tCanvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => {
+                tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+                tCtx.drawImage(img, 0, 0);
+            };
+            img.src = dataUrl;
+        }
+    </script>
+</body>
+</html>
