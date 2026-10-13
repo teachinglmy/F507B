@@ -22,7 +22,7 @@
         /* 通用 Modal 樣式 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 23, 42, 0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px;
+            background: rgba(15, 23, 42, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px;
         }
         .modal-card {
             background: white; padding: 24px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
@@ -66,10 +66,6 @@
         .app-container { display: none; height: 100vh; flex-direction: column; }
         header { background: #ffffff; padding: 10px 16px; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
         
-        .conn-status { font-size: 12px; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
-        .conn-online { background: #d1fae5; color: #047857; }
-        .conn-offline { background: #fef3c7; color: #b45309; }
-
         /* 學生端界面與響應式 Canvas */
         .student-workspace { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px; overflow-y: auto; }
         .toolbar { display: flex; gap: 8px; width: 100%; max-width: 840px; margin-bottom: 10px; align-items: center; background: white; padding: 10px 14px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; }
@@ -83,8 +79,8 @@
         
         /* 模式切換按鈕區 */
         .mode-toggle-group { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #cbd5e1; }
-        .mode-btn { padding: 8px 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; background: transparent; color: #64748b; transition: all 0.2s; }
-        .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .mode-btn { padding: 6px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; background: transparent; color: #64748b; transition: all 0.2s; }
+        .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 4px rgba(37,99,235,0.2); }
 
         .feedback-box {
             width: 100%; max-width: 840px; margin-top: 12px; padding: 14px;
@@ -110,7 +106,7 @@
         .badge-unlocked { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
 
         .projection-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .projected-view { border: 2px dashed #94a3b8; border-radius: 12px; width: 100%; max-width: 800px; aspect-ratio: 2/1; display: flex; justify-content: center; align-items: center; position: relative; background: #ffffff; }
+        .projected-view { border: 2px dashed #94a3b8; border-radius: 12px; width: 100%; max-width: 800px; aspect-ratio: 2/1; display: flex; justify-content: center; align-items: center; position: relative; background: #f8fafc; }
 
         .btn { padding: 6px 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.9; }
@@ -172,6 +168,7 @@
         <div class="modal-card">
             <h3 style="margin-top:0; color:#0f172a; font-size:20px;">💡 學習錦囊</h3>
             
+            <!-- 錦囊 1 區塊 -->
             <div class="hint-box">
                 <div class="hint-header">
                     <span class="hint-title">錦囊 1</span>
@@ -180,6 +177,7 @@
                 <div id="content-hint-1" class="hint-content" style="display:none;"></div>
             </div>
 
+            <!-- 錦囊 2 區塊 -->
             <div class="hint-box">
                 <div class="hint-header">
                     <span class="hint-title">錦囊 2</span>
@@ -196,12 +194,7 @@
     <div id="waiting-overlay">
         <div style="font-size:50px; margin-bottom:12px;">⌛</div>
         <div>已成功進入課堂待機室</div>
-        <div style="font-size:14px; color:#64748b; margin-top:8px;">請等待老師在主控端批准開啟堂課...</div>
-        <div style="font-size:13px; color:#2563eb; margin-top:10px; font-weight:bold;" id="waiting-conn-status">正在尋找老師課室...</div>
-        
-        <button class="btn btn-primary" style="margin-top:20px; padding:10px 20px; font-size:15px; border-radius:10px;" onclick="bypassWaitingDirectly()">
-            ⚡ 若網路延遲，點此直接進入自主探究
-        </button>
+        <div style="font-size:14px; color:#64748b; margin-top:8px;">請等待老師批准開啟堂課...</div>
     </div>
 
     <!-- 學生螢幕鎖定 Overlay -->
@@ -216,8 +209,7 @@
             <div>
                 <strong>組號：</strong><span id="display-id">--</span>組 &nbsp;|&nbsp; 
                 <strong>名稱：</strong><span id="display-name">--</span> &nbsp;|&nbsp;
-                <strong>題目：</strong><span id="display-q-title" style="color:var(--primary-color); font-weight:bold;">第一題</span> &nbsp;|&nbsp;
-                <span id="student-net-tag" class="conn-status conn-offline">自主探究</span>
+                <strong>題目：</strong><span id="display-q-title" style="color:var(--primary-color); font-weight:bold;">第一題</span>
             </div>
             <div>
                 <button class="btn btn-warning" onclick="openHintModal()">💡 錦囊</button>
@@ -294,20 +286,10 @@
         let peer = null;
         let peerConn = null;
         let studentConns = {}; 
+        let broadcastChan = new BroadcastChannel('math_classroom_channel_v13');
         let studentsData = {}; 
-        let retryConnectTimer = null;
 
-        // 多重 STUN 穿透設定：解決學校 Wi-Fi 防火牆阻擋
-        const PEER_CONFIG = {
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:global.stun.twilio.com:3478' }
-                ]
-            }
-        };
-
+        // 題目數據與雙重錦囊內容配置
         const QUESTIONS = [
             {
                 title: "第一題",
@@ -360,11 +342,10 @@
                 document.getElementById('student-app').style.display = 'flex';
                 
                 studentApproved = false;
-                currentQIndex = 0;
                 document.getElementById('waiting-overlay').style.display = 'flex';
 
                 initStudentCanvas();
-                connectAsStudent();
+                initStudentPeer();
             } else {
                 document.getElementById('display-room-teacher').innerText = studentInfo.room;
                 document.getElementById('teacher-app').style.display = 'flex';
@@ -372,82 +353,28 @@
             }
         }
 
-        function bypassWaitingDirectly() {
-            studentApproved = true;
-            document.getElementById('waiting-overlay').style.display = 'none';
-            loadQuestion(0);
-        }
-
-        function getTeacherPeerId() {
-            return 'math-p5-room-' + studentInfo.room;
-        }
-
-        /* 💥 iPad 專用自動輪詢連線引擎 */
-        function connectAsStudent() {
-            try {
-                if (peer) peer.destroy();
-                peer = new Peer(PEER_CONFIG);
-
-                peer.on('open', () => {
-                    updateStudentConnUI(false, "正在尋找老師課室...");
-                    startTeacherConnectionLoop();
-                });
-
-                peer.on('error', (err) => {
-                    console.warn('iPad PeerJS 連線重試中...', err);
-                    updateStudentConnUI(false, "搜尋老師課室中 (可點下方按鈕自主探究)");
-                });
-            } catch (e) {
-                console.warn('網絡初始化失敗:', e);
-            }
-        }
-
-        function startTeacherConnectionLoop() {
-            if (retryConnectTimer) clearInterval(retryConnectTimer);
-
-            const tryConnect = () => {
-                if (peerConn && peerConn.open) {
-                    clearInterval(retryConnectTimer);
-                    return;
-                }
-
-                const teacherId = getTeacherPeerId();
-                peerConn = peer.connect(teacherId, { reliable: true });
-
-                peerConn.on('open', () => {
-                    clearInterval(retryConnectTimer);
-                    updateStudentConnUI(true, "已成功連線老師課室！");
-                    sendStudentState('JOIN');
-                });
-
+        /* --- 通訊系統 --- */
+        function initStudentPeer() {
+            peer = new Peer();
+            
+            peer.on('open', () => {
+                const teacherPeerId = 'math-teacher-v13-' + studentInfo.room;
+                peerConn = peer.connect(teacherPeerId, { reliable: true });
+                peerConn.on('open', () => sendStudentState('JOIN'));
                 peerConn.on('data', (data) => handleTeacherCommand(data));
-                peerConn.on('close', () => {
-                    updateStudentConnUI(false, "連線中斷，正在自動重連...");
-                    startTeacherConnectionLoop();
-                });
+            });
+
+            broadcastChan.onmessage = (e) => {
+                if (e.data.type === 'TEACHER_CMD' && e.data.room === studentInfo.room) {
+                    handleTeacherCommand(e.data.payload);
+                }
             };
-
-            tryConnect();
-            retryConnectTimer = setInterval(tryConnect, 2000);
-        }
-
-        function updateStudentConnUI(isOnline, statusMsg) {
-            const tag = document.getElementById('student-net-tag');
-            const waitMsg = document.getElementById('waiting-conn-status');
-            if (isOnline) {
-                tag.className = "conn-status conn-online";
-                tag.innerText = "🟢 已連線";
-            } else {
-                tag.className = "conn-status conn-offline";
-                tag.innerText = "🟡 自主探究";
-            }
-            if (waitMsg && statusMsg) waitMsg.innerText = statusMsg;
         }
 
         function initTeacherPeer() {
-            const teacherId = getTeacherPeerId();
-            peer = new Peer(teacherId, PEER_CONFIG);
-
+            const teacherPeerId = 'math-teacher-v13-' + studentInfo.room;
+            peer = new Peer(teacherPeerId);
+            
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => handleStudentMessage(data, conn));
                 conn.on('close', () => {
@@ -461,19 +388,18 @@
                 });
             });
 
-            peer.on('error', (err) => {
-                console.warn('教師端廣播提示:', err);
-            });
+            broadcastChan.onmessage = (e) => {
+                if (e.data.type === 'STUDENT_MSG' && e.data.room === studentInfo.room) {
+                    handleStudentMessage(e.data.payload, null);
+                }
+            };
         }
 
-        /* 💥 JPEG 畫質設為 0.55：適度微幅壓縮，保障畫質清晰同時絕不卡死 iPad Safari 連線 */
         function sendStudentState(msgType = 'UPDATE') {
             if (currentRole !== 'student') return;
             const canvas = document.getElementById('student-canvas');
             const state = getCurrentQState();
             
-            const compressedImage = canvas.toDataURL('image/jpeg', 0.55);
-
             const payload = {
                 type: msgType,
                 room: studentInfo.room,
@@ -486,27 +412,25 @@
                 usedHint2: state.usedHint2,
                 submitted: state.isSubmitted,
                 online: true,
-                pieces: state.pieces,
-                image: compressedImage,
+                image: canvas.toDataURL(),
                 timestamp: Date.now()
             };
 
-            if (peerConn && peerConn.open) {
-                peerConn.send(payload);
-            }
+            if (peerConn && peerConn.open) peerConn.send(payload);
+            broadcastChan.postMessage({ type: 'STUDENT_MSG', room: studentInfo.room, payload: payload });
         }
 
         function handleTeacherCommand(cmd) {
             if (cmd.action === 'APPROVE') {
                 studentApproved = true;
                 document.getElementById('waiting-overlay').style.display = 'none';
-                if (cmd.targetQIndex !== undefined) {
+                if (cmd.targetQIndex !== undefined && cmd.targetQIndex !== currentQIndex) {
                     loadQuestion(cmd.targetQIndex);
                 }
             } else if (cmd.action === 'UNLOCK_CHALLENGE') {
                 if (cmd.targetId === studentInfo.id || cmd.targetId === 'ALL') {
                     hasChallengeUnlocked = true;
-                    alert("🎉 恭喜！老師已發放「第三題挑戰題」！快來挑戰更精彩的切割吧！");
+                    alert("🎉 恭喜！老師已為你們組發放「第三題挑戰題」！快來嘗試更具挑戰性的分割吧！");
                     if (cmd.autoSwitch) loadQuestion(2);
                 }
             } else if (cmd.action === 'LOCK') {
@@ -515,7 +439,7 @@
             } else if (cmd.action === 'SWITCH_Q') {
                 if (studentApproved) {
                     if (cmd.qIndex === 2 && !hasChallengeUnlocked) {
-                        updateFeedback("🔒 第三題為「挑戰題」！請先完成第二題，等待老師檢查發放權限喔！", "warning");
+                        updateFeedback("🔒 第三題為「挑戰題」！請先完成第二題，等待老師檢查後發放挑戰題權限喔！", "warning");
                     } else {
                         loadQuestion(cmd.qIndex);
                     }
@@ -529,47 +453,39 @@
 
             if (studentsData[msg.id] && studentsData[msg.id].approved) {
                 msg.approved = true;
+                if (conn && conn.open) {
+                    conn.send({ action: 'APPROVE', targetQIndex: currentQIndex });
+                }
             }
 
-            msg.online = true;
             studentsData[msg.id] = msg;
-
-            if (msg.approved && conn && conn.open) {
-                conn.send({ action: 'APPROVE', targetQIndex: currentQIndex });
-            }
-
             renderStudentList();
-            if (selectedStudentId === msg.id) {
-                updateProjectedCanvas(msg.image, msg);
-            }
+            if (selectedStudentId === msg.id) updateProjectedCanvas(msg.image);
         }
 
-        /* 模式切換邏輯：徹底清空點狀態與拖拽殘留 */
+        /* --- 模式切換邏輯 --- */
         function setInteractionMode(mode) {
             currentMode = mode;
-            document.getElementById('btn-mode-cut').className = `mode-btn ${mode === 'cut' ? 'active' : ''}`;
-            document.getElementById('btn-mode-drag').className = `mode-btn ${mode === 'drag' ? 'active' : ''}`;
-
-            const state = getCurrentQState();
-            state.cutPoints = []; 
-            state.activePieceIndex = -1;
+            document.getElementById('btn-mode-cut').classList.toggle('active', mode === 'cut');
+            document.getElementById('btn-mode-drag').classList.toggle('active', mode === 'drag');
 
             const hintText = document.getElementById('step-hint');
             if (mode === 'cut') {
-                hintText.innerHTML = '✂️ <strong>分割模式</strong>：請點選紫色的點連成一刀分割線。';
+                hintText.innerText = '✂️ 當前為「分割模式」：請點選紫色的邊界點連成一刀。';
             } else {
-                hintText.innerHTML = '✋ <strong>拖拉模式</strong>：請按住並搬移圖形至右邊長方形。';
+                hintText.innerText = '✋ 當前為「拖拉模式」：請按住並搬移圖形至右邊長方形。';
             }
             drawStudentCanvas();
         }
 
-        /* --- 雙重錦囊邏輯 --- */
+        /* --- 雙重錦囊邏輯 (Sequential Hints System) --- */
         function openHintModal() {
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
             
             document.getElementById('hint-modal').style.display = 'flex';
 
+            // 錦囊 1 狀態渲染
             const btn1 = document.getElementById('btn-hint-1');
             const content1 = document.getElementById('content-hint-1');
             if (state.usedHint1) {
@@ -583,6 +499,7 @@
                 content1.style.display = "none";
             }
 
+            // 錦囊 2 狀態渲染 (必須在錦囊 1 解鎖後方可點擊)
             const btn2 = document.getElementById('btn-hint-2');
             const content2 = document.getElementById('content-hint-2');
             if (state.usedHint2) {
@@ -620,43 +537,33 @@
                 }
             }
             sendStudentState();
-            openHintModal();
+            openHintModal(); // 刷新錦囊 Modal 狀態
         }
 
         function closeHintModal() {
             document.getElementById('hint-modal').style.display = 'none';
         }
 
-        /* --- 學生端 Canvas 與 iPad 手勢引擎（解決座標映射與觸控問題） --- */
+        /* --- 學生端繪圖與精確紫點檢測演算法 --- */
         let canvas, ctx;
-        let isPointerDown = false;
-        let pointerStartPos = { x: 0, y: 0 };
-        let dragOffset = { x: 0, y: 0 };
 
         function initStudentCanvas() {
             canvas = document.getElementById('student-canvas');
             ctx = canvas.getContext('2d');
 
-            // 同時綁定 Pointer 與 Touch 事件，徹底避免 iPad 觸控相容性漏洞
-            canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
-            canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
-            canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
-            canvas.addEventListener('pointercancel', handlePointerUp, { passive: false });
-
-            canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
-            canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
-            canvas.addEventListener('touchend', handlePointerUp, { passive: false });
+            canvas.addEventListener('pointerdown', handlePointerDown);
+            canvas.addEventListener('pointermove', handlePointerMove);
+            canvas.addEventListener('pointerup', handlePointerUp);
 
             loadQuestion(0);
         }
 
         function getCurrentQState() {
             if (!studentQStates[currentQIndex]) {
-                const q = QUESTIONS[currentQIndex];
                 studentQStates[currentQIndex] = {
                     isCut: false,
                     cutPoints: [],
-                    pieces: [{ poly: JSON.parse(JSON.stringify(q.poly)), pos: { x: 0, y: 0 }, color: '#2563eb' }],
+                    pieces: [],
                     activePieceIndex: -1,
                     usedHint1: false,
                     usedHint2: false,
@@ -674,9 +581,10 @@
             sendStudentState();
         }
 
+        /* 嚴格限定只有在「格線交點 ∩ 圖形邊界」的位置才顯示紫色點 */
         function getPolygonEdgeDots(poly) {
             const dots = [];
-            const g = GRID_SIZE;
+            const g = GRID_SIZE; // 40px
 
             function addUniqueDot(x, y) {
                 const rx = Math.round(x);
@@ -758,13 +666,11 @@
             const state = getCurrentQState();
             const showGrid = document.getElementById('grid-toggle').checked;
 
-            // 1. 純白底色
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 2. 深色背景格線
+            // 1. 工作區深色格線 (#334155)
             if (showGrid) {
-                ctx.strokeStyle = '#cbd5e1';
+                ctx.strokeStyle = '#334155';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([4, 4]);
                 for (let x = 0; x <= canvas.width; x += GRID_SIZE) {
@@ -776,13 +682,13 @@
                 ctx.setLineDash([]);
             }
 
-            // 3. 原平行四邊形位置保留清晰黑色單線輪廓
+            // 2. 原平行四邊形輪廓「保留一條清晰的黑色單線輪廓」
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2.0;
             ctx.setLineDash([]);
-            drawPolygonOnCtx(ctx, q.poly, false, true);
+            drawPolygon(q.poly, false, true);
 
-            // 4. 標示底邊
+            // 3. 標示下方的邊為「底」
             if (q.bottomLabelPos) {
                 ctx.fillStyle = '#1d4ed8';
                 ctx.font = 'bold 16px Arial, sans-serif';
@@ -790,108 +696,93 @@
                 ctx.fillText('底', q.bottomLabelPos.x, q.bottomLabelPos.y);
             }
 
-            // 5. 右側長方形目標框
+            // 4. 右側長方形目標框 (黑框)
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2.5;
             ctx.setLineDash([6, 6]);
             ctx.strokeRect(q.targetRect.x, q.targetRect.y, q.targetRect.width, q.targetRect.height);
             ctx.setLineDash([]);
 
-            // 6. 繪製多邊形碎片
+            // 5. 繪製圖形
             let activeDots = [];
-            state.pieces.forEach(p => {
-                ctx.save();
-                ctx.translate(p.pos.x, p.pos.y);
-                ctx.fillStyle = p.color || '#2563eb';
+            if (!state.isCut) {
+                ctx.fillStyle = '#2563eb';
                 ctx.strokeStyle = '#000000';
                 ctx.lineWidth = 2.5;
-                drawPolygonOnCtx(ctx, p.poly, true, true);
-                ctx.restore();
+                drawPolygon(q.poly, true, true);
 
-                const pDots = getPolygonEdgeDots(p.poly).map(d => ({ x: d.x + p.pos.x, y: d.y + p.pos.y }));
-                activeDots.push(...pDots);
-            });
+                activeDots = getPolygonEdgeDots(q.poly);
+            } else {
+                state.pieces.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.pos.x, p.pos.y);
+                    ctx.fillStyle = p.color;
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2.5;
+                    drawPolygon(p.poly, true, true);
+                    ctx.restore();
 
-            // 7. 僅在分割模式下繪製亮紫點與選中的紅點（標示 1、2）
+                    const pDots = getPolygonEdgeDots(p.poly).map(d => ({ x: d.x + p.pos.x, y: d.y + p.pos.y }));
+                    activeDots.push(...pDots);
+                });
+            }
+
+            // 6. 在分割模式下顯示亮紫色切割點
             if (currentMode === 'cut') {
                 activeDots.forEach(dot => {
-                    ctx.fillStyle = '#d946ef';
-                    ctx.strokeStyle = '#ffffff';
+                    ctx.fillStyle = '#d946ef'; // 亮紫色
+                    ctx.strokeStyle = '#ffffff'; // 白邊
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(dot.x, dot.y, 7, 0, Math.PI * 2);
+                    ctx.arc(dot.x, dot.y, 6.5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 });
 
-                state.cutPoints.forEach((pt, index) => {
+                // 繪製選取中的切點 (紅色高亮)
+                state.cutPoints.forEach(pt => {
                     ctx.fillStyle = '#ef4444';
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 2.5;
-                    ctx.beginPath();
-                    ctx.arc(pt.x, pt.y, 11, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 13px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(index + 1, pt.x, pt.y);
+                    ctx.beginPath(); ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2); ctx.fill();
                 });
             }
         }
 
-        function drawPolygonOnCtx(targetCtx, poly, fill = true, stroke = true) {
-            if (!poly || poly.length === 0) return;
-            targetCtx.beginPath();
-            targetCtx.moveTo(poly[0].x, poly[0].y);
-            for (let i = 1; i < poly.length; i++) targetCtx.lineTo(poly[i].x, poly[i].y);
-            targetCtx.closePath();
-            if (fill) targetCtx.fill();
-            if (stroke) targetCtx.stroke();
+        function drawPolygon(poly, fill = true, stroke = true) {
+            if (poly.length === 0) return;
+            ctx.beginPath();
+            ctx.moveTo(poly[0].x, poly[0].y);
+            for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x, poly[i].y);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
         }
 
-        /* 💥 iPad 專用萬用觸控座標解算器（防 NaN） */
         function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            
-            let clientX = e.clientX;
-            let clientY = e.clientY;
-
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else if (e.changedTouches && e.changedTouches.length > 0) {
-                clientX = e.changedTouches[0].clientX;
-                clientY = e.changedTouches[0].clientY;
-            }
-
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
             };
         }
 
+        let pointerStartPos = { x: 0, y: 0 };
+        let dragStart = { x: 0, y: 0 };
+
         function handlePointerDown(e) {
             if (isScreenLocked) return;
-            if (e.cancelable) e.preventDefault();
-
-            isPointerDown = true;
             const coords = getCanvasCoords(e);
             pointerStartPos = coords;
 
             const state = getCurrentQState();
-
-            if (currentMode === 'drag') {
+            if (currentMode === 'drag' && state.isCut) {
                 for (let i = state.pieces.length - 1; i >= 0; i--) {
                     const p = state.pieces[i];
                     const localPt = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
                     if (isPointInPoly(localPt, p.poly)) {
                         state.activePieceIndex = i;
-                        dragOffset = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
+                        dragStart = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
                         break;
                     }
                 }
@@ -899,75 +790,68 @@
         }
 
         function handlePointerMove(e) {
-            if (!isPointerDown || isScreenLocked) return;
-            if (e.cancelable) e.preventDefault();
-
             const state = getCurrentQState();
-            if (currentMode === 'drag' && state.activePieceIndex !== -1) {
+            if (currentMode === 'drag' && state.activePieceIndex !== -1 && state.isCut) {
                 const coords = getCanvasCoords(e);
-                state.pieces[state.activePieceIndex].pos.x = coords.x - dragOffset.x;
-                state.pieces[state.activePieceIndex].pos.y = coords.y - dragOffset.y;
+                state.pieces[state.activePieceIndex].pos.x = coords.x - dragStart.x;
+                state.pieces[state.activePieceIndex].pos.y = coords.y - dragStart.y;
                 drawStudentCanvas();
             }
         }
 
         function handlePointerUp(e) {
-            if (!isPointerDown || isScreenLocked) return;
-            if (e.cancelable) e.preventDefault();
-            isPointerDown = false;
-
+            if (isScreenLocked) return;
             const coords = getCanvasCoords(e);
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
 
             const distMoved = Math.hypot(coords.x - pointerStartPos.x, coords.y - pointerStartPos.y);
 
-            // 輕點判定 (滑動距離 < 25px)
-            if (currentMode === 'cut' && distMoved < 25) {
-                if (!state.isCut || q.allowMultiCut) {
-                    let activeDots = [];
-                    state.pieces.forEach(p => {
-                        const pDots = getPolygonEdgeDots(p.poly).map(d => ({ x: d.x + p.pos.x, y: d.y + p.pos.y }));
-                        activeDots.push(...pDots);
-                    });
-
-                    let nearestDot = null;
-                    let minDist = 45; // 💥 磁吸半徑精確調升至 45px，適合 iPad 手指點擊！
-                    activeDots.forEach(dot => {
-                        const d = Math.hypot(coords.x - dot.x, coords.y - dot.y);
-                        if (d < minDist) {
-                            minDist = d;
-                            nearestDot = dot;
+            if (currentMode === 'cut') {
+                if (distMoved < 12) {
+                    if (!state.isCut || q.allowMultiCut) {
+                        let activeDots = [];
+                        if (!state.isCut) {
+                            activeDots = getPolygonEdgeDots(q.poly);
+                        } else {
+                            state.pieces.forEach(p => {
+                                const pDots = getPolygonEdgeDots(p.poly).map(d => ({ x: d.x + p.pos.x, y: d.y + p.pos.y }));
+                                activeDots.push(...pDots);
+                            });
                         }
-                    });
 
-                    if (nearestDot) {
-                        const existsIndex = state.cutPoints.findIndex(pt => Math.hypot(pt.x - nearestDot.x, pt.y - nearestDot.y) < 5);
-                        if (existsIndex === -1) {
+                        let nearestDot = null;
+                        let minDist = 30; // 30px 磁吸半徑
+                        activeDots.forEach(dot => {
+                            const d = Math.hypot(coords.x - dot.x, coords.y - dot.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestDot = dot;
+                            }
+                        });
+
+                        if (nearestDot) {
                             state.cutPoints.push({ x: nearestDot.x, y: nearestDot.y });
-                            if (state.cutPoints.length === 1) {
-                                updateFeedback("📍 **已鎖定第一個切割點（紅點 1）！** 請點選第二個紫點連成一刀分割線！", "info");
-                            } else if (state.cutPoints.length === 2) {
+                            if (state.cutPoints.length === 2) {
                                 processCut();
                             }
                             drawStudentCanvas();
+                        } else {
+                            updateFeedback("💡 **小提示：** 請點選圖形邊界上的「亮紫色圓點」進行點對點切割喔！", "info");
                         }
                     } else {
-                        updateFeedback("💡 **小提示：** 請點選圖形邊界上的「亮紫色圓點」進行點對點切割喔！", "info");
+                        updateFeedback("⚠️ 本題只需切一刀喔！如想重新切請按「重新開始」；如想搬移圖形請切換至「✋ 拖拉模式」。", "warning");
                     }
-                } else {
-                    updateFeedback("⚠️ 本題只需切一刀喔！如想重新切請按「重新開始」；如想搬移圖形請切換至「✋ 拖拉模式」。", "warning");
                 }
             } else if (currentMode === 'drag') {
                 if (state.activePieceIndex !== -1) {
                     state.activePieceIndex = -1;
-                    updateFeedback("👍 **平移成功！** 觀察一下，圖形被搬移後，它的形狀和總面積有發生變化嗎？", "info");
                 }
             }
             sendStudentState();
         }
 
-        /* 切割與數學解惑引導 */
+        /* 多邊形切割與數學概念解惑 */
         function processCut() {
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
@@ -1010,11 +894,11 @@
 
                 const isVertical = Math.abs(p1.x - p2.x) < 2;
                 if (isVertical) {
-                    updateFeedback(`🎉 **切得太棒了！精準點對點切在「高」（垂直線）上，獲得了直角！**<br>
+                    updateFeedback(`🎉 **切得太棒了！精準點對點切在「高」（垂直線）上！**<br>
                         📘 **數學導師解惑：** 觀察左邊留下的黑色單線輪廓！雖然圖形被切開並搬移了，但總面積完全沒有改變（等積變形）！請切換至「✋ 拖拉模式」把它們搬去右邊長方形拼滿吧！`, "success");
                 } else {
                     updateFeedback(`👏 **點對點切割成功！切出了 ${state.pieces.length} 個圖形！**<br>
-                        🤔 **數學導師解惑：** 但這是一條斜線喔！斜線切出來的角度不是 $90^\circ$ 直角，搬到右邊長方形後無法平整對齊。大腦正在建立新連結，試試尋找垂直於底邊的「高」吧！`, "warning");
+                        🤔 **數學導師解惑：** 但這是一條斜線喔！斜線切出來的角度不是 $90^\circ$ 直角，搬到右邊長方形後無法平整對齊。試試尋找能切出直角的位置（垂直的高）吧！`, "warning");
                 }
             } else {
                 updateFeedback("🌱 **再試一次！** 請選擇兩個紫點，連成一條貫穿圖形的直線吧！", "warning");
@@ -1088,14 +972,12 @@
             return null;
         }
 
-        /* 萬用多邊形點擊檢測 */
         function isPointInPoly(pt, poly) {
-            if (!poly || poly.length < 3) return false;
             let inside = false;
             for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
                 const xi = poly[i].x, yi = poly[i].y;
                 const xj = poly[j].x, yj = poly[j].y;
-                const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi + 1e-10) + xi);
+                const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
                 if (intersect) inside = !inside;
             }
             return inside;
@@ -1106,11 +988,10 @@
             const wasHint1 = state ? state.usedHint1 : false;
             const wasHint2 = state ? state.usedHint2 : false;
 
-            const q = QUESTIONS[currentQIndex];
             studentQStates[currentQIndex] = {
                 isCut: false,
                 cutPoints: [],
-                pieces: [{ poly: JSON.parse(JSON.stringify(q.poly)), pos: { x: 0, y: 0 }, color: '#2563eb' }],
+                pieces: [],
                 activePieceIndex: -1,
                 usedHint1: wasHint1,
                 usedHint2: wasHint2,
@@ -1132,11 +1013,9 @@
 
         function updateFeedback(msg, type) {
             const box = document.getElementById('feedback');
-            if (box) {
-                box.innerHTML = msg;
-                if (type === 'success') box.style.borderColor = '#10b981';
-                else box.style.borderColor = '#f59e0b';
-            }
+            box.innerHTML = msg;
+            if (type === 'success') box.style.borderColor = '#10b981';
+            else box.style.borderColor = '#f59e0b';
         }
 
         /* --- 教師控制端邏輯 --- */
@@ -1166,6 +1045,7 @@
                     statusTag = '<span class="status-badge badge-active">探索中</span>';
                 }
 
+                // 渲染錦囊標籤：清晰顯示該組領取了錦囊1還是錦囊2
                 let hintTag = '';
                 if (student.usedHint1 && student.usedHint2) {
                     hintTag = '<span class="badge-hint">💡 錦囊1+2</span>';
@@ -1203,6 +1083,7 @@
                     studentConns[id].send(payload);
                 }
             });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
             renderStudentList();
         }
 
@@ -1216,6 +1097,7 @@
                     studentConns[id].send(payload);
                 }
             });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
             renderStudentList();
         }
 
@@ -1230,6 +1112,7 @@
                     studentConns[id].send(payload);
                 }
             });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
         }
 
         function switchQuestion(qIndex) {
@@ -1244,78 +1127,26 @@
                     studentConns[id].send(payload);
                 }
             });
+            broadcastChan.postMessage({ type: 'TEACHER_CMD', room: studentInfo.room, payload: payload });
         }
 
         function projectStudentWork(id) {
             selectedStudentId = id;
             renderStudentList();
             const student = studentsData[id];
-            if (!student) return;
-            
             document.getElementById('projected-title').innerText = `正在投影：[第 ${student.id} 組] ${student.name} 的畫面`;
-            updateProjectedCanvas(student.image, student);
+            updateProjectedCanvas(student.image);
         }
 
-        function updateProjectedCanvas(dataUrl, studentData) {
+        function updateProjectedCanvas(dataUrl) {
             const tCanvas = document.getElementById('teacher-canvas');
             const tCtx = tCanvas.getContext('2d');
-            
-            if (dataUrl && dataUrl.length > 50) {
-                const img = new Image();
-                img.onload = () => {
-                    tCtx.fillStyle = '#ffffff';
-                    tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
-                    tCtx.drawImage(img, 0, 0, tCanvas.width, tCanvas.height);
-                };
-                img.onerror = () => {
-                    renderTeacherFallbackCanvas(tCtx, studentData);
-                };
-                img.src = dataUrl;
-            } else if (studentData) {
-                renderTeacherFallbackCanvas(tCtx, studentData);
-            }
-        }
-
-        function renderTeacherFallbackCanvas(tCtx, student) {
-            const qIdx = student.currentQIndex !== undefined ? student.currentQIndex : currentQIndex;
-            const q = QUESTIONS[qIdx];
-            
-            tCtx.fillStyle = '#ffffff';
-            tCtx.fillRect(0, 0, 800, 400);
-
-            // 背景格線
-            tCtx.strokeStyle = '#cbd5e1';
-            tCtx.lineWidth = 1;
-            for (let x = 0; x <= 800; x += GRID_SIZE) {
-                tCtx.beginPath(); tCtx.moveTo(x, 0); tCtx.lineTo(x, 400); tCtx.stroke();
-            }
-            for (let y = 0; y <= 400; y += GRID_SIZE) {
-                tCtx.beginPath(); tCtx.moveTo(0, y); tCtx.lineTo(800, y); tCtx.stroke();
-            }
-
-            // 原輪廓
-            tCtx.strokeStyle = '#000000';
-            tCtx.lineWidth = 2;
-            drawPolygonOnCtx(tCtx, q.poly, false, true);
-
-            // 目標長方形
-            tCtx.strokeStyle = '#000000';
-            tCtx.lineWidth = 2.5;
-            tCtx.setLineDash([6, 6]);
-            tCtx.strokeRect(q.targetRect.x, q.targetRect.y, q.targetRect.width, q.targetRect.height);
-            tCtx.setLineDash([]);
-
-            if (student.pieces && student.pieces.length > 0) {
-                student.pieces.forEach(p => {
-                    tCtx.save();
-                    tCtx.translate(p.pos.x, p.pos.y);
-                    tCtx.fillStyle = p.color || '#2563eb';
-                    tCtx.strokeStyle = '#000000';
-                    tCtx.lineWidth = 2.5;
-                    drawPolygonOnCtx(tCtx, p.poly, true, true);
-                    tCtx.restore();
-                });
-            }
+            const img = new Image();
+            img.onload = () => {
+                tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+                tCtx.drawImage(img, 0, 0);
+            };
+            img.src = dataUrl;
         }
     </script>
 </body>
