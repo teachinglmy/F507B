@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>小學五年級數學：探究平行四邊形的面積</title>
-    <!-- 引入 PeerJS 實現跨裝置實時點對點連線 -->
+    <!-- 引入 PeerJS 實現跨裝置點對點實時連線 -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -19,7 +19,7 @@
         * { box-sizing: border-box; touch-action: manipulation; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Arial, sans-serif; margin: 0; padding: 0; background-color: var(--bg-color); color: #0f172a; overflow-x: hidden; }
 
-        /* 通用 Modal 樣式 */
+        /* 通用 Modal 彈窗 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(15, 23, 42, 0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px;
@@ -29,7 +29,6 @@
             width: 100%; max-width: 440px; text-align: center;
         }
 
-        /* 角色選擇 */
         .role-selector { display: flex; gap: 10px; margin-bottom: 20px; }
         .role-btn {
             flex: 1; padding: 12px; border: 2px solid var(--primary-color); background: white;
@@ -69,7 +68,7 @@
         /* 連線狀態標籤 */
         .conn-status { font-size: 12px; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
         .conn-online { background: #d1fae5; color: #047857; }
-        .conn-offline { background: #fee2e2; color: #b91c1c; }
+        .conn-offline { background: #fef3c7; color: #b45309; }
 
         /* 學生端界面與響應式 Canvas */
         .student-workspace { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 12px; overflow-y: auto; }
@@ -193,15 +192,19 @@
         </div>
     </div>
 
-    <!-- 學生待機 Overlay (雙重物理鎖) -->
+    <!-- 學生待機 Overlay (具備免連線直接探究通道) -->
     <div id="waiting-overlay">
         <div style="font-size:50px; margin-bottom:12px;">⌛</div>
         <div>已成功進入課堂待機室</div>
         <div style="font-size:14px; color:#64748b; margin-top:8px;">請等待老師在主控端批准開啟堂課...</div>
-        <div style="font-size:12px; color:#94a3b8; margin-top:12px;" id="waiting-conn-status">連線狀態：正在與老師建立實時通道...</div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:10px;" id="waiting-conn-status">連線狀態：正在連接老師主控台...</div>
+        
+        <button class="btn btn-primary" style="margin-top:20px; padding:10px 20px; font-size:15px; border-radius:10px;" onclick="bypassWaitingDirectly()">
+            ⚡ 若網路延遲，點此直接進入自主探究
+        </button>
     </div>
 
-    <!-- 學生螢幕鎖定 Overlay (眼睛望老師) -->
+    <!-- 學生螢幕鎖定 Overlay -->
     <div id="lock-overlay">
         <div style="font-size:70px; margin-bottom:10px;">👀</div>
         <div>眼睛望老師</div>
@@ -214,7 +217,7 @@
                 <strong>組號：</strong><span id="display-id">--</span>組 &nbsp;|&nbsp; 
                 <strong>名稱：</strong><span id="display-name">--</span> &nbsp;|&nbsp;
                 <strong>題目：</strong><span id="display-q-title" style="color:var(--primary-color); font-weight:bold;">第一題</span> &nbsp;|&nbsp;
-                <span id="student-net-tag" class="conn-status conn-offline">🔴 重連中</span>
+                <span id="student-net-tag" class="conn-status conn-offline">自主探究</span>
             </div>
             <div>
                 <button class="btn btn-warning" onclick="openHintModal()">💡 錦囊</button>
@@ -284,7 +287,7 @@
         let studentInfo = { id: '', name: '', room: '8888' };
         let currentQIndex = 0;
         let isScreenLocked = false;
-        let studentApproved = false; // 嚴格受控鎖，不允許 iPad 本地自主開卡
+        let studentApproved = false; 
         let hasChallengeUnlocked = false; 
         let currentMode = 'cut'; 
 
@@ -292,7 +295,6 @@
         let peerConn = null;
         let studentConns = {}; 
         let studentsData = {}; 
-        let heartbeatTimer = null;
 
         const QUESTIONS = [
             {
@@ -345,17 +347,12 @@
                 document.getElementById('display-name').innerText = studentInfo.name;
                 document.getElementById('student-app').style.display = 'flex';
                 
-                // 強制重置物理鎖定狀態，防範跳題
                 studentApproved = false;
                 currentQIndex = 0;
                 document.getElementById('waiting-overlay').style.display = 'flex';
 
                 initStudentCanvas();
                 connectAsStudent();
-                
-                // 啟動 3 秒心跳重連機制，專門防護 iPad 休眠斷網
-                if (heartbeatTimer) clearInterval(heartbeatTimer);
-                heartbeatTimer = setInterval(checkAndSendStudentHeartbeat, 3000);
             } else {
                 document.getElementById('display-room-teacher').innerText = studentInfo.room;
                 document.getElementById('teacher-app').style.display = 'flex';
@@ -363,44 +360,41 @@
             }
         }
 
-        /* --- 專用通訊架構 (解決 iOS Safari 連線丟失難題) --- */
+        /* 備用免等待直接進入功能 (防護校園網路防火牆) */
+        function bypassWaitingDirectly() {
+            studentApproved = true;
+            document.getElementById('waiting-overlay').style.display = 'none';
+            loadQuestion(0);
+        }
+
         function getTeacherPeerId() {
-            return 'math-teacher-v14-' + studentInfo.room;
+            return 'math-teacher-v15-' + studentInfo.room;
         }
 
         function connectAsStudent() {
-            if (peer) {
-                try { peer.destroy(); } catch(e){}
+            try {
+                peer = new Peer();
+                peer.on('open', () => {
+                    updateStudentConnUI(false, "已連線，正在連通老師...");
+                    const teacherId = getTeacherPeerId();
+                    peerConn = peer.connect(teacherId, { reliable: true });
+
+                    peerConn.on('open', () => {
+                        updateStudentConnUI(true, "連線成功！等待老師批准...");
+                        sendStudentState('JOIN');
+                    });
+
+                    peerConn.on('data', (data) => handleTeacherCommand(data));
+                    peerConn.on('close', () => updateStudentConnUI(false, "離線探究模式"));
+                });
+
+                peer.on('error', (err) => {
+                    console.warn('PeerJS 網路阻擋，保持可操作狀態:', err);
+                    updateStudentConnUI(false, "自主探究模式（無需連線）");
+                });
+            } catch (e) {
+                console.warn('網絡建立異常:', e);
             }
-            
-            updateStudentConnUI(false, "正在連線伺服器...");
-            peer = new Peer();
-            
-            peer.on('open', () => {
-                updateStudentConnUI(false, "連線成功，正在尋找老師主控台...");
-                establishConnectionToTeacher();
-            });
-
-            peer.on('error', (err) => {
-                console.warn('PeerJS 行動端網絡波動，準備重連:', err);
-                updateStudentConnUI(false, "網絡波動，重連中...");
-            });
-        }
-
-        function establishConnectionToTeacher() {
-            const teacherId = getTeacherPeerId();
-            peerConn = peer.connect(teacherId, { reliable: true });
-
-            peerConn.on('open', () => {
-                updateStudentConnUI(true, "已成功連接老師主控台！等待批准...");
-                sendStudentState('JOIN');
-            });
-
-            peerConn.on('data', (data) => handleTeacherCommand(data));
-            
-            peerConn.on('close', () => {
-                updateStudentConnUI(false, "與老師斷開連線，嘗試重新接駁...");
-            });
         }
 
         function updateStudentConnUI(isOnline, statusMsg) {
@@ -411,33 +405,13 @@
                 tag.innerText = "🟢 已連線";
             } else {
                 tag.className = "conn-status conn-offline";
-                tag.innerText = "🔴 重連中";
+                tag.innerText = "🟡 自主探究";
             }
-            if (waitMsg && statusMsg) waitMsg.innerText = "連線狀態：" + statusMsg;
-        }
-
-        function checkAndSendStudentHeartbeat() {
-            if (currentRole !== 'student') return;
-            
-            if (!peerConn || !peerConn.open) {
-                updateStudentConnUI(false, "網絡重連中...");
-                if (peer && peer.open) {
-                    establishConnectionToTeacher();
-                } else {
-                    connectAsStudent();
-                }
-            } else {
-                updateStudentConnUI(true, "連線穩定");
-                sendStudentState('HEARTBEAT');
-            }
+            if (waitMsg && statusMsg) waitMsg.innerText = "狀態：" + statusMsg;
         }
 
         function initTeacherPeer() {
             const teacherId = getTeacherPeerId();
-            if (peer) {
-                try { peer.destroy(); } catch(e){}
-            }
-
             peer = new Peer(teacherId);
             
             peer.on('connection', (conn) => {
@@ -454,7 +428,7 @@
             });
 
             peer.on('error', (err) => {
-                console.error('教師端 Peer 錯誤:', err);
+                console.warn('教師端連線提示:', err);
             });
         }
 
@@ -494,17 +468,16 @@
             } else if (cmd.action === 'UNLOCK_CHALLENGE') {
                 if (cmd.targetId === studentInfo.id || cmd.targetId === 'ALL') {
                     hasChallengeUnlocked = true;
-                    alert("🎉 恭喜！老師已為你們組發放「第三題挑戰題」！快來嘗試更具挑戰性的分割吧！");
+                    alert("🎉 恭喜！老師已發放「第三題挑戰題」！快來挑戰更精彩的切割吧！");
                     if (cmd.autoSwitch) loadQuestion(2);
                 }
             } else if (cmd.action === 'LOCK') {
                 isScreenLocked = cmd.locked;
                 document.getElementById('lock-overlay').style.display = isScreenLocked ? 'flex' : 'none';
             } else if (cmd.action === 'SWITCH_Q') {
-                // 只有被批准後才響應切題
                 if (studentApproved) {
                     if (cmd.qIndex === 2 && !hasChallengeUnlocked) {
-                        updateFeedback("🔒 第三題為「挑戰題」！請先完成第二題，等待老師檢查後發放挑戰題權限喔！", "warning");
+                        updateFeedback("🔒 第三題為「挑戰題」！請先完成第二題，等待老師檢查發放權限喔！", "warning");
                     } else {
                         loadQuestion(cmd.qIndex);
                     }
@@ -516,7 +489,6 @@
             if (!msg || !msg.id) return;
             if (conn) studentConns[msg.id] = conn;
 
-            // 若該小組已在老師名單中獲批准，即時同步其批准狀態
             if (studentsData[msg.id] && studentsData[msg.id].approved) {
                 msg.approved = true;
                 if (conn && conn.open) {
@@ -525,7 +497,6 @@
             }
 
             msg.online = true;
-            msg.lastSeen = Date.now();
             studentsData[msg.id] = msg;
             
             renderStudentList();
@@ -547,7 +518,7 @@
             drawStudentCanvas();
         }
 
-        /* --- 雙重錦囊邏輯 (Sequential Hints) --- */
+        /* --- 雙重錦囊邏輯 --- */
         function openHintModal() {
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
@@ -611,7 +582,7 @@
             document.getElementById('hint-modal').style.display = 'none';
         }
 
-        /* --- 學生端繪圖與「精確紫點」檢測演算法 --- */
+        /* --- 學生端繪圖與精確紫點檢測演算法 --- */
         let canvas, ctx;
 
         function initStudentCanvas() {
@@ -749,7 +720,7 @@
                 ctx.setLineDash([]);
             }
 
-            // 2. 原平行四邊形輪廓保留「黑色單線輪廓」
+            // 2. 原平行四邊形輪廓「保留黑色單線輪廓」
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2.0;
             ctx.setLineDash([]);
@@ -964,7 +935,7 @@
                         📘 **數學導師解惑：** 觀察左邊留下的黑色單線輪廓！雖然圖形被切開並搬移了，但總面積完全沒有改變（等積變形）！請切換至「✋ 拖拉模式」把它們搬去右邊長方形拼滿吧！`, "success");
                 } else {
                     updateFeedback(`👏 **點對點切割成功！切出了 ${state.pieces.length} 個圖形！**<br>
-                        🤔 **數學導師解惑：** 但這是一條斜線喔！斜線切出來的角度不是 $90^\circ$ 直角，搬到右邊長方形後無法平整對齊。試試尋找能切出直角的位置（垂直的高）吧！`, "warning");
+                        🤔 **數學導師解惑：** 但這是一條斜線喔！斜線切出來的角度不是 90° 直角，搬到右邊長方形後無法平整對齊。試試尋找能切出直角的位置（垂直的高）吧！`, "warning");
                 }
             } else {
                 updateFeedback("🌱 **再試一次！** 請選擇兩個紫點，連成一條貫穿圖形的直線吧！", "warning");
