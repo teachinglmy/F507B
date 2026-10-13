@@ -81,9 +81,9 @@
         canvas { display: block; width: 100% !important; height: auto !important; aspect-ratio: 2 / 1; border-radius: 10px; touch-action: none; }
         
         /* 模式切換按鈕區 */
-        .mode-toggle-group { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #cbd5e1; }
-        .mode-btn { padding: 8px 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; background: transparent; color: #64748b; transition: all 0.2s; }
-        .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .mode-toggle-group { display: flex; gap: 6px; background: #f1f5f9; padding: 6px; border-radius: 12px; border: 1.5px solid #cbd5e1; }
+        .mode-btn { padding: 10px 18px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; background: transparent; color: #475569; transition: all 0.2s; }
+        .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 3px 8px rgba(37,99,235,0.35); }
 
         .feedback-box {
             width: 100%; max-width: 840px; margin-top: 12px; padding: 14px;
@@ -109,7 +109,7 @@
         .badge-unlocked { background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
 
         .projection-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .projected-view { border: 2px dashed #94a3b8; border-radius: 12px; width: 100%; max-width: 800px; aspect-ratio: 2/1; display: flex; justify-content: center; align-items: center; position: relative; background: #f8fafc; }
+        .projected-view { border: 2px dashed #94a3b8; border-radius: 12px; width: 100%; max-width: 800px; aspect-ratio: 2/1; display: flex; justify-content: center; align-items: center; position: relative; background: #ffffff; }
 
         .btn { padding: 6px 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.9; }
@@ -142,13 +142,13 @@
             <p style="color:#2563eb; font-size:16px; margin-bottom:18px; font-weight:bold;">探究平行四邊形的面積</p>
             
             <div class="role-selector">
-                <button id="btn-role-student" class="role-btn active" onclick="selectRole('student')">學生 iPad/手機端</button>
-                <button id="btn-role-teacher" class="role-btn" onclick="selectRole('teacher')">教師主控端</button>
+                <button id="btn-role-student" class="role-btn active" onclick="selectRole('student')">學生</button>
+                <button id="btn-role-teacher" class="role-btn" onclick="selectRole('teacher')">教師</button>
             </div>
             
             <div id="room-input-group" class="form-group">
                 <label>課堂房號 (4位數字)</label>
-                <input type="text" id="input-room" value="8888" maxlength="6">
+                <input type="text" id="input-room" value="0503" maxlength="6">
             </div>
 
             <div id="student-form">
@@ -366,7 +366,7 @@
         }
 
         function getTeacherPeerId() {
-            return 'math-teacher-v17-' + studentInfo.room;
+            return 'math-teacher-v18-' + studentInfo.room;
         }
 
         function connectAsStudent() {
@@ -430,13 +430,12 @@
             });
         }
 
-        /* 💥 解決投影失敗的核心：將圖片轉為輕量級 JPEG (0.4 畫質)，大小從 600KB 驟降至 15KB！ */
         function sendStudentState(msgType = 'UPDATE') {
             if (currentRole !== 'student') return;
             const canvas = document.getElementById('student-canvas');
             const state = getCurrentQState();
             
-            // 採用低延遲 JPEG 壓縮，徹底防止網路通道阻塞
+            // 採用低延遲 JPEG 壓縮 (0.4 畫質)，防止網絡通道阻塞
             const compressedImage = canvas.toDataURL('image/jpeg', 0.4);
 
             const payload = {
@@ -451,7 +450,7 @@
                 usedHint2: state.usedHint2,
                 submitted: state.isSubmitted,
                 online: true,
-                pieces: state.pieces, // 攜帶矢量幾何數據作為備用繪圖補丁
+                pieces: state.pieces,
                 image: compressedImage,
                 timestamp: Date.now()
             };
@@ -508,14 +507,23 @@
             }
         }
 
-        /* --- 模式切換邏輯 --- */
+        /* 💥 模式切換修復：徹底清理觸控鎖定與殘留點 */
         function setInteractionMode(mode) {
             currentMode = mode;
-            document.getElementById('btn-mode-cut').classList.toggle('active', mode === 'cut');
-            document.getElementById('btn-mode-drag').classList.toggle('active', mode === 'drag');
+            const btnCut = document.getElementById('btn-mode-cut');
+            const btnDrag = document.getElementById('btn-mode-drag');
+
+            if (mode === 'cut') {
+                btnCut.classList.add('active');
+                btnDrag.classList.remove('active');
+            } else {
+                btnCut.classList.remove('active');
+                btnDrag.classList.add('active');
+            }
 
             const state = getCurrentQState();
-            state.cutPoints = [];
+            state.cutPoints = []; // 清理未完成的切割點
+            state.activePieceIndex = -1;
 
             const hintText = document.getElementById('step-hint');
             if (mode === 'cut') {
@@ -714,11 +722,13 @@
             const state = getCurrentQState();
             const showGrid = document.getElementById('grid-toggle').checked;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 💥 關鍵修復：強制滿鋪白色背景，防止 JPEG 轉換變成黑屏！
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // 1. 工作區深色格線
             if (showGrid) {
-                ctx.strokeStyle = '#334155';
+                ctx.strokeStyle = '#cbd5e1';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([4, 4]);
                 for (let x = 0; x <= canvas.width; x += GRID_SIZE) {
@@ -766,14 +776,14 @@
                 activeDots.push(...pDots);
             });
 
-            // 6. 分割模式下亮紫點
+            // 6. 分割模式下繪製亮紫點
             if (currentMode === 'cut') {
                 activeDots.forEach(dot => {
                     ctx.fillStyle = '#d946ef';
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(dot.x, dot.y, 6.5, 0, Math.PI * 2);
+                    ctx.arc(dot.x, dot.y, 7, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 });
@@ -810,7 +820,7 @@
 
         function handlePointerDown(e) {
             if (isScreenLocked) return;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
 
             if (canvas.setPointerCapture) {
                 try { canvas.setPointerCapture(e.pointerId); } catch(err){}
@@ -836,7 +846,7 @@
 
         function handlePointerMove(e) {
             if (isScreenLocked) return;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
 
             const state = getCurrentQState();
             if (currentMode === 'drag' && state.activePieceIndex !== -1) {
@@ -847,9 +857,10 @@
             }
         }
 
+        /* 💥 切割點擊判定放寬至 25px，解決 iPad 手指微晃導致切割失敗問題 */
         function handlePointerUp(e) {
             if (isScreenLocked) return;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
 
             if (canvas.releasePointerCapture) {
                 try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
@@ -862,7 +873,8 @@
             const distMoved = Math.hypot(coords.x - pointerStartPos.x, coords.y - pointerStartPos.y);
 
             if (currentMode === 'cut') {
-                if (distMoved < 12) {
+                // 放寬判定至 25px
+                if (distMoved < 25) {
                     if (!state.isCut || q.allowMultiCut) {
                         let activeDots = [];
                         state.pieces.forEach(p => {
@@ -871,7 +883,7 @@
                         });
 
                         let nearestDot = null;
-                        let minDist = 30;
+                        let minDist = 35; // 35px 智能磁吸
                         activeDots.forEach(dot => {
                             const d = Math.hypot(coords.x - dot.x, coords.y - dot.y);
                             if (d < minDist) {
@@ -881,11 +893,14 @@
                         });
 
                         if (nearestDot) {
-                            state.cutPoints.push({ x: nearestDot.x, y: nearestDot.y });
-                            if (state.cutPoints.length === 2) {
-                                processCut();
+                            const exists = state.cutPoints.some(pt => Math.hypot(pt.x - nearestDot.x, pt.y - nearestDot.y) < 5);
+                            if (!exists) {
+                                state.cutPoints.push({ x: nearestDot.x, y: nearestDot.y });
+                                if (state.cutPoints.length === 2) {
+                                    processCut();
+                                }
+                                drawStudentCanvas();
                             }
-                            drawStudentCanvas();
                         } else {
                             updateFeedback("💡 **小提示：** 請點選圖形邊界上的「亮紫色圓點」進行點對點切割喔！", "info");
                         }
@@ -1187,7 +1202,7 @@
             updateProjectedCanvas(student.image, student);
         }
 
-        /* 💥 雙軌實時投影渲染器：支援圖片與向量補丁，100% 保障不黑屏！ */
+        /* 雙軌實時投影渲染器：支援圖片與向量補丁，100% 保障不黑屏！ */
         function updateProjectedCanvas(dataUrl, studentData) {
             const tCanvas = document.getElementById('teacher-canvas');
             const tCtx = tCanvas.getContext('2d');
@@ -1195,7 +1210,8 @@
             if (dataUrl && dataUrl.length > 50) {
                 const img = new Image();
                 img.onload = () => {
-                    tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+                    tCtx.fillStyle = '#ffffff';
+                    tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
                     tCtx.drawImage(img, 0, 0, tCanvas.width, tCanvas.height);
                 };
                 img.onerror = () => {
@@ -1212,7 +1228,8 @@
             const qIdx = student.currentQIndex !== undefined ? student.currentQIndex : currentQIndex;
             const q = QUESTIONS[qIdx];
             
-            tCtx.clearRect(0, 0, 800, 400);
+            tCtx.fillStyle = '#ffffff';
+            tCtx.fillRect(0, 0, 800, 400);
 
             // 背景格線
             tCtx.strokeStyle = '#cbd5e1';
