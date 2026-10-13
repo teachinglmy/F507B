@@ -83,8 +83,8 @@
         
         /* 模式切換按鈕區 */
         .mode-toggle-group { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; border: 1px solid #cbd5e1; }
-        .mode-btn { padding: 8px 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; background: transparent; color: #64748b; transition: all 0.2s; }
-        .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 4px rgba(37,99,235,0.2); }
+        .mode-btn { padding: 8px 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; background: transparent; color: #64748b; transition: all 0.2s; }
+        .mode-btn.active { background: var(--primary-color); color: white; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
 
         .feedback-box {
             width: 100%; max-width: 840px; margin-top: 12px; padding: 14px;
@@ -172,7 +172,6 @@
         <div class="modal-card">
             <h3 style="margin-top:0; color:#0f172a; font-size:20px;">💡 學習錦囊</h3>
             
-            <!-- 錦囊 1 區塊 -->
             <div class="hint-box">
                 <div class="hint-header">
                     <span class="hint-title">錦囊 1</span>
@@ -181,7 +180,6 @@
                 <div id="content-hint-1" class="hint-content" style="display:none;"></div>
             </div>
 
-            <!-- 錦囊 2 區塊 -->
             <div class="hint-box">
                 <div class="hint-header">
                     <span class="hint-title">錦囊 2</span>
@@ -299,7 +297,7 @@
         let studentsData = {}; 
         let retryConnectTimer = null;
 
-        // PeerJS 穿透設定：加入 Google 官方 STUN 伺服器，專門穿透學校 Wi-Fi 防火牆阻擋
+        // PeerJS 穿透設定：Google 官方 STUN 伺服器穿透學校 Wi-Fi 防火牆
         const PEER_CONFIG = {
             config: {
                 iceServers: [
@@ -383,7 +381,7 @@
             return 'math-teacher-room-' + studentInfo.room;
         }
 
-        /* 💥 iPad 專用自動輪詢連線引擎 */
+        /* iPad 專用自動輪詢與連線引擎 */
         function connectAsStudent() {
             try {
                 if (peer) peer.destroy();
@@ -429,7 +427,6 @@
             };
 
             tryConnect();
-            // 每 2 秒自動重試一次，解決學生比老師早開頁面的問題
             retryConnectTimer = setInterval(tryConnect, 2000);
         }
 
@@ -468,14 +465,14 @@
             });
         }
 
-        /* 💥 JPEG 數據壓縮 (0.35 畫質)：解決 iPad Safari WebRTC Buffer 溢出開不了課室的關鍵修復！ */
+        /* 💥 圖像 quality 設定為 0.85 (清晰高畫質，僅微幅降低體積，不影響視覺) */
         function sendStudentState(msgType = 'UPDATE') {
             if (currentRole !== 'student') return;
             const canvas = document.getElementById('student-canvas');
             const state = getCurrentQState();
             
-            // 轉成輕量化 JPEG，將 800KB 壓縮至 15KB
-            const compressedImage = canvas.toDataURL('image/jpeg', 0.35);
+            // 採用 0.85 高品質壓縮
+            const compressedImage = canvas.toDataURL('image/jpeg', 0.85);
 
             const payload = {
                 type: msgType,
@@ -547,11 +544,11 @@
             }
         }
 
-        /* --- 模式切換邏輯 --- */
+        /* 💥 模式切換邏輯：清空點狀態與拖拉殘留 */
         function setInteractionMode(mode) {
             currentMode = mode;
-            document.getElementById('btn-mode-cut').classList.toggle('active', mode === 'cut');
-            document.getElementById('btn-mode-drag').classList.toggle('active', mode === 'drag');
+            document.getElementById('btn-mode-cut').className = `mode-btn ${mode === 'cut' ? 'active' : ''}`;
+            document.getElementById('btn-mode-drag').className = `mode-btn ${mode === 'drag' ? 'active' : ''}`;
 
             const state = getCurrentQState();
             state.cutPoints = []; 
@@ -559,9 +556,9 @@
 
             const hintText = document.getElementById('step-hint');
             if (mode === 'cut') {
-                hintText.innerText = '✂️ 當前為「分割模式」：請點選紫色的點連成一刀分割線。';
+                hintText.innerHTML = '✂️ <strong>分割模式</strong>：請點選紫色的點連成一刀分割線。';
             } else {
-                hintText.innerText = '✋ 當前為「拖拉模式」：請按住並搬移圖形至右邊長方形。';
+                hintText.innerHTML = '✋ <strong>拖拉模式</strong>：請按住並搬移圖形至右邊長方形。';
             }
             drawStudentCanvas();
         }
@@ -630,16 +627,20 @@
             document.getElementById('hint-modal').style.display = 'none';
         }
 
-        /* --- 學生端繪圖與精確紫點/紅點檢測演算法 --- */
+        /* --- 學生端 Canvas 與手勢引擎（分割與拖拉完美修復） --- */
         let canvas, ctx;
+        let isPointerDown = false;
+        let pointerStartPos = { x: 0, y: 0 };
+        let dragOffset = { x: 0, y: 0 };
 
         function initStudentCanvas() {
             canvas = document.getElementById('student-canvas');
             ctx = canvas.getContext('2d');
 
-            canvas.addEventListener('pointerdown', handlePointerDown);
-            canvas.addEventListener('pointermove', handlePointerMove);
-            canvas.addEventListener('pointerup', handlePointerUp);
+            canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
+            canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
+            canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
+            canvas.addEventListener('pointercancel', handlePointerUp, { passive: false });
 
             loadQuestion(0);
         }
@@ -752,11 +753,11 @@
             const state = getCurrentQState();
             const showGrid = document.getElementById('grid-toggle').checked;
 
-            // 1. 強制塗白背景（解決轉 JPEG 黑屏問題）
+            // 1. 底色填白（保障底色純白）
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. 工作區深色格線
+            // 2. 深色背景格線
             if (showGrid) {
                 ctx.strokeStyle = '#cbd5e1';
                 ctx.lineWidth = 1.5;
@@ -770,7 +771,7 @@
                 ctx.setLineDash([]);
             }
 
-            // 3. 原平行四邊形輪廓保留清晰黑色單線輪廓
+            // 3. 原平行四邊形位置保留清晰黑色單線輪廓
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2.0;
             ctx.setLineDash([]);
@@ -791,7 +792,7 @@
             ctx.strokeRect(q.targetRect.x, q.targetRect.y, q.targetRect.width, q.targetRect.height);
             ctx.setLineDash([]);
 
-            // 6. 繪製碎片
+            // 6. 繪製多邊形碎片
             let activeDots = [];
             state.pieces.forEach(p => {
                 ctx.save();
@@ -806,7 +807,7 @@
                 activeDots.push(...pDots);
             });
 
-            // 7. 分割模式下繪製亮紫點與紅點（標示 1、2）
+            // 7. 僅在分割模式下繪製亮紫點與紅點（標示 1、2）
             if (currentMode === 'cut') {
                 activeDots.forEach(dot => {
                     ctx.fillStyle = '#d946ef';
@@ -856,22 +857,26 @@
             };
         }
 
-        let pointerStartPos = { x: 0, y: 0 };
-        let dragStart = { x: 0, y: 0 };
-
+        /* 💥 精確 Pointer 事件綁定：防止 iPad 滾動頁面並鎖定觸控捕獲 */
         function handlePointerDown(e) {
             if (isScreenLocked) return;
+            if (e.cancelable) e.preventDefault();
+
+            isPointerDown = true;
+            try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+
             const coords = getCanvasCoords(e);
             pointerStartPos = coords;
 
             const state = getCurrentQState();
+
             if (currentMode === 'drag') {
                 for (let i = state.pieces.length - 1; i >= 0; i--) {
                     const p = state.pieces[i];
                     const localPt = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
                     if (isPointInPoly(localPt, p.poly)) {
                         state.activePieceIndex = i;
-                        dragStart = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
+                        dragOffset = { x: coords.x - p.pos.x, y: coords.y - p.pos.y };
                         break;
                     }
                 }
@@ -879,24 +884,31 @@
         }
 
         function handlePointerMove(e) {
+            if (!isPointerDown || isScreenLocked) return;
+            if (e.cancelable) e.preventDefault();
+
             const state = getCurrentQState();
             if (currentMode === 'drag' && state.activePieceIndex !== -1) {
                 const coords = getCanvasCoords(e);
-                state.pieces[state.activePieceIndex].pos.x = coords.x - dragStart.x;
-                state.pieces[state.activePieceIndex].pos.y = coords.y - dragStart.y;
+                state.pieces[state.activePieceIndex].pos.x = coords.x - dragOffset.x;
+                state.pieces[state.activePieceIndex].pos.y = coords.y - dragOffset.y;
                 drawStudentCanvas();
             }
         }
 
         function handlePointerUp(e) {
-            if (isScreenLocked) return;
+            if (!isPointerDown || isScreenLocked) return;
+            if (e.cancelable) e.preventDefault();
+            isPointerDown = false;
+            try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
+
             const coords = getCanvasCoords(e);
             const state = getCurrentQState();
             const q = QUESTIONS[currentQIndex];
 
             const distMoved = Math.hypot(coords.x - pointerStartPos.x, coords.y - pointerStartPos.y);
 
-            if (currentMode === 'cut' && distMoved < 22) {
+            if (currentMode === 'cut' && distMoved < 25) {
                 if (!state.isCut || q.allowMultiCut) {
                     let activeDots = [];
                     state.pieces.forEach(p => {
@@ -905,7 +917,7 @@
                     });
 
                     let nearestDot = null;
-                    let minDist = 35; // 35px 智能磁吸
+                    let minDist = 35; // 35px 磁吸半徑
                     activeDots.forEach(dot => {
                         const d = Math.hypot(coords.x - dot.x, coords.y - dot.y);
                         if (d < minDist) {
@@ -1291,4 +1303,4 @@
         }
     </script>
 </body>
-</html>F
+</html>
