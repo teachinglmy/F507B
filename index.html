@@ -297,12 +297,13 @@
         let studentsData = {}; 
         let retryConnectTimer = null;
 
-        // PeerJS 穿透設定：Google 官方 STUN 伺服器穿透學校 Wi-Fi 防火牆
+        // 多重 STUN 穿透設定：解決學校 Wi-Fi 防火牆阻擋
         const PEER_CONFIG = {
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
                 ]
             }
         };
@@ -378,10 +379,10 @@
         }
 
         function getTeacherPeerId() {
-            return 'math-teacher-room-' + studentInfo.room;
+            return 'math-p5-room-' + studentInfo.room;
         }
 
-        /* iPad 專用自動輪詢與連線引擎 */
+        /* 💥 iPad 專用自動輪詢連線引擎 */
         function connectAsStudent() {
             try {
                 if (peer) peer.destroy();
@@ -465,14 +466,13 @@
             });
         }
 
-        /* 💥 圖像 quality 設定為 0.85 (清晰高畫質，僅微幅降低體積，不影響視覺) */
+        /* 💥 JPEG 畫質設為 0.55：適度微幅壓縮，保障畫質清晰同時絕不卡死 iPad Safari 連線 */
         function sendStudentState(msgType = 'UPDATE') {
             if (currentRole !== 'student') return;
             const canvas = document.getElementById('student-canvas');
             const state = getCurrentQState();
             
-            // 採用 0.85 高品質壓縮
-            const compressedImage = canvas.toDataURL('image/jpeg', 0.85);
+            const compressedImage = canvas.toDataURL('image/jpeg', 0.55);
 
             const payload = {
                 type: msgType,
@@ -544,7 +544,7 @@
             }
         }
 
-        /* 💥 模式切換邏輯：清空點狀態與拖拉殘留 */
+        /* 模式切換邏輯：徹底清空點狀態與拖拽殘留 */
         function setInteractionMode(mode) {
             currentMode = mode;
             document.getElementById('btn-mode-cut').className = `mode-btn ${mode === 'cut' ? 'active' : ''}`;
@@ -627,7 +627,7 @@
             document.getElementById('hint-modal').style.display = 'none';
         }
 
-        /* --- 學生端 Canvas 與手勢引擎（分割與拖拉完美修復） --- */
+        /* --- 學生端 Canvas 與 iPad 手勢引擎（解決座標映射與觸控問題） --- */
         let canvas, ctx;
         let isPointerDown = false;
         let pointerStartPos = { x: 0, y: 0 };
@@ -637,10 +637,15 @@
             canvas = document.getElementById('student-canvas');
             ctx = canvas.getContext('2d');
 
+            // 同時綁定 Pointer 與 Touch 事件，徹底避免 iPad 觸控相容性漏洞
             canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
             canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
             canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
             canvas.addEventListener('pointercancel', handlePointerUp, { passive: false });
+
+            canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+            canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+            canvas.addEventListener('touchend', handlePointerUp, { passive: false });
 
             loadQuestion(0);
         }
@@ -753,7 +758,7 @@
             const state = getCurrentQState();
             const showGrid = document.getElementById('grid-toggle').checked;
 
-            // 1. 底色填白（保障底色純白）
+            // 1. 純白底色
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -807,7 +812,7 @@
                 activeDots.push(...pDots);
             });
 
-            // 7. 僅在分割模式下繪製亮紫點與紅點（標示 1、2）
+            // 7. 僅在分割模式下繪製亮紫點與選中的紅點（標示 1、2）
             if (currentMode === 'cut') {
                 activeDots.forEach(dot => {
                     ctx.fillStyle = '#d946ef';
@@ -847,24 +852,34 @@
             if (stroke) targetCtx.stroke();
         }
 
+        /* 💥 iPad 專用萬用觸控座標解算器（防 NaN） */
         function getCanvasCoords(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+            
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            }
+
             return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
             };
         }
 
-        /* 💥 精確 Pointer 事件綁定：防止 iPad 滾動頁面並鎖定觸控捕獲 */
         function handlePointerDown(e) {
             if (isScreenLocked) return;
             if (e.cancelable) e.preventDefault();
 
             isPointerDown = true;
-            try { canvas.setPointerCapture(e.pointerId); } catch(err){}
-
             const coords = getCanvasCoords(e);
             pointerStartPos = coords;
 
@@ -900,7 +915,6 @@
             if (!isPointerDown || isScreenLocked) return;
             if (e.cancelable) e.preventDefault();
             isPointerDown = false;
-            try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
 
             const coords = getCanvasCoords(e);
             const state = getCurrentQState();
@@ -908,6 +922,7 @@
 
             const distMoved = Math.hypot(coords.x - pointerStartPos.x, coords.y - pointerStartPos.y);
 
+            // 輕點判定 (滑動距離 < 25px)
             if (currentMode === 'cut' && distMoved < 25) {
                 if (!state.isCut || q.allowMultiCut) {
                     let activeDots = [];
@@ -917,7 +932,7 @@
                     });
 
                     let nearestDot = null;
-                    let minDist = 35; // 35px 磁吸半徑
+                    let minDist = 45; // 💥 磁吸半徑精確調升至 45px，適合 iPad 手指點擊！
                     activeDots.forEach(dot => {
                         const d = Math.hypot(coords.x - dot.x, coords.y - dot.y);
                         if (d < minDist) {
@@ -1073,6 +1088,7 @@
             return null;
         }
 
+        /* 萬用多邊形點擊檢測 */
         function isPointInPoly(pt, poly) {
             if (!poly || poly.length < 3) return false;
             let inside = false;
